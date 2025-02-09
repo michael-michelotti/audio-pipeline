@@ -1,0 +1,8 @@
+build/
+.vs/
+Debug/
+Release/
+*.user
+*.filters
+*.vcxproj.user
+*.wav
