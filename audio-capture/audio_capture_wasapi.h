@@ -10,6 +10,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "mp3_encoder.h"
+
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "avrt.lib")
 
@@ -19,7 +21,7 @@ public:
     ~AudioCapture();
 
     bool Initialize();
-    bool StartRecording(const std::string& filename);
+    bool StartRecording(const std::string& filename, std::unique_ptr<IAudioEncoder> audioEncoder);
     void StopRecording();
 
 private:
@@ -37,6 +39,9 @@ private:
     IMMDevice* pDevice;
     IAudioClient* pAudioClient;
     IAudioCaptureClient* pCaptureClient;
+
+    std::unique_ptr<IAudioEncoder> encoder;
+    std::ofstream encodedFile;
 
     HANDLE hCaptureThread;
     HANDLE hStopEvent;

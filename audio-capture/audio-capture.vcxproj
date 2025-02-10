@@ -130,10 +130,13 @@
     <ClCompile Include="audio_capture_wasapi.cpp" />
     <ClCompile Include="audio_capture_win32.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="mp3_encoder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="audio_capture_wasapi.h" />
     <ClInclude Include="audio_capture_win32.h" />
+    <ClInclude Include="audio_encoder.h" />
+    <ClInclude Include="mp3_encoder.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

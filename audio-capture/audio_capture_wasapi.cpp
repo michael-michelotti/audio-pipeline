@@ -151,14 +151,17 @@ bool AudioCapture::Initialize() {
     return true;
 }
 
-bool AudioCapture::StartRecording(const std::string& filename) {
+bool AudioCapture::StartRecording(const std::string& filename, std::unique_ptr<IAudioEncoder> audioEncoder) {
     if (isRecording) return false;
 
-    outputFile.open(filename, std::ios::binary);
-    if (!outputFile.is_open()) return false;
+    encoder = std::move(audioEncoder);
+    if (!encoder->Initialize(deviceSampleRate, deviceChannels, deviceBitsPerSample)) {
+        return false;
+    }
 
-    WriteWaveHeader();
-    dataSize = 0;
+    encodedFile.open(filename, std::ios::binary);
+    if (!encodedFile.is_open()) return false;
+
     isRecording = true;
 
     // Start audio client
@@ -198,38 +201,22 @@ void AudioCapture::StopRecording() {
     // Stop audio client
     pAudioClient->Stop();
 
-    // Update WAV header with final size
-    outputFile.seekp(4); // Move to file size position
-    DWORD fileSize = dataSize + 36;
-    outputFile.write(reinterpret_cast<const char*>(&fileSize), 4);
-
-    outputFile.seekp(40); // Move to data size position
-    outputFile.write(reinterpret_cast<const char*>(&dataSize), 4);
-    // outputFile.seekp(0);
-    WriteWaveHeader();
-
-    outputFile.close();
+    encodedFile.close();
     isRecording = false;
 }
 
 void AudioCapture::CaptureThread() {
     HRESULT hr;
     DWORD taskIndex = 0;
+    BYTE* pData;
+    UINT32 numFramesAvailable;
+    UINT32 bytesToWrite;
+    DWORD flags;
     HANDLE hTask = AvSetMmThreadCharacteristics(L"Audio", &taskIndex);
 
     if (hTask == nullptr) {
         std::cerr << "Failed to set thread characteristics." << std::endl;
     }
-
-    BYTE* pData;
-    UINT32 numFramesAvailable;
-    UINT32 bytesToWrite;
-    DWORD flags;
-
-    // Get device period for proper sleep timing
-    REFERENCE_TIME hnsDefaultDevicePeriod;
-    pAudioClient->GetDevicePeriod(&hnsDefaultDevicePeriod, NULL);
-    DWORD sleepTime = static_cast<DWORD>(hnsDefaultDevicePeriod / 10000); // Convert to milliseconds
 
     while (isRecording) {
         // Wait indefinitely until new audio data is available or stop is requested
@@ -241,10 +228,8 @@ void AudioCapture::CaptureThread() {
         }
         else if (waitResult == WAIT_OBJECT_0) {  // Capture event signaled
             HRESULT hr = pCaptureClient->GetNextPacketSize(&numFramesAvailable);
-            if (SUCCEEDED(hr) && numFramesAvailable > 0) {
-                BYTE* pData;
-                DWORD flags;
 
+            if (SUCCEEDED(hr) && numFramesAvailable > 0) {
                 hr = pCaptureClient->GetBuffer(
                     &pData,
                     &numFramesAvailable,
@@ -257,15 +242,17 @@ void AudioCapture::CaptureThread() {
                     float* stereoData = reinterpret_cast<float*>(pData);
                     UINT32 totalSamples  = numFramesAvailable * deviceChannels;
 
+                    // Copy left sample to right sample to convert mono to stereo
                     for (UINT32 i = 0; i < numFramesAvailable; ++i) {
                         float leftSample = stereoData[i * 2];
                         float& rightSample = stereoData[i * 2 + 1];
                         rightSample = leftSample;
                     }
 
-                    bytesToWrite = numFramesAvailable * deviceChannels * sizeof(float);
-                    outputFile.write(reinterpret_cast<const char*>(stereoData), bytesToWrite);
-                    dataSize += bytesToWrite;
+                    auto encodedData = encoder->Encode(stereoData, numFramesAvailable);
+                    if (!encodedData.empty()) {
+                        encodedFile.write(reinterpret_cast<const char*>(encodedData.data()), encodedData.size());
+                    }
 
                     hr = pCaptureClient->ReleaseBuffer(numFramesAvailable);
                     if (FAILED(hr)) {
