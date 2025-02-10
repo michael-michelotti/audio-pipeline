@@ -1,5 +1,5 @@
 // main.cpp
-#include "audio_capture.h"
+#include "audio_capture_wasapi.h"
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -14,6 +14,9 @@ int main() {
             std::this_thread::sleep_for(std::chrono::seconds(5));
             capture.StopRecording();
             std::cout << "Recording stopped.\n";
+        }
+        else {
+            std::cout << "Error opening audio capture\n";
         }
     }
 

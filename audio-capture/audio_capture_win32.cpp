@@ -1,7 +1,7 @@
-#include "audio_capture.h"
+#include "audio_capture_win32.h"
 
 
-AudioCapture::AudioCapture() : hWaveIn(nullptr), dataSize(0), isRecording(false), outputFile() {
+AudioCaptureWin32::AudioCaptureWin32() : hWaveIn(nullptr), dataSize(0), isRecording(false), outputFile() {
     // Initialize wave format structure
     waveFormat.wFormatTag = WAVE_FORMAT_PCM;
     waveFormat.nChannels = NUM_CHANNELS;
@@ -12,14 +12,14 @@ AudioCapture::AudioCapture() : hWaveIn(nullptr), dataSize(0), isRecording(false)
     waveFormat.cbSize = 0;
 }
 
-AudioCapture::~AudioCapture() {
+AudioCaptureWin32::~AudioCaptureWin32() {
     if (isRecording) {
         StopRecording();
     }
     CleanupBuffers();
 }
 
-bool AudioCapture::Initialize() {
+bool AudioCaptureWin32::Initialize() {
     // Open wave input device
     MMRESULT result = waveInOpen(&hWaveIn, WAVE_MAPPER, &waveFormat,
         (DWORD_PTR)WaveInProc, (DWORD_PTR)this,
@@ -53,7 +53,7 @@ bool AudioCapture::Initialize() {
     return true;
 }
 
-bool AudioCapture::StartRecording(const std::string& filename) {
+bool AudioCaptureWin32::StartRecording(const std::string& filename) {
     outputFile.open(filename, std::ios::binary);
     if (!outputFile.is_open()) {
         std::cerr << "Failed to open output file\n";
@@ -83,7 +83,7 @@ bool AudioCapture::StartRecording(const std::string& filename) {
     return true;
 }
 
-void AudioCapture::StopRecording() {
+void AudioCaptureWin32::StopRecording() {
     if (!isRecording) return;
 
     isRecording = false;
@@ -98,16 +98,16 @@ void AudioCapture::StopRecording() {
 }
 
 
-void CALLBACK AudioCapture::WaveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance,
+void CALLBACK AudioCaptureWin32::WaveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance,
     DWORD_PTR dwParam1, DWORD_PTR dwParam2) {
     if (uMsg == WIM_DATA) {
-        AudioCapture* capture = reinterpret_cast<AudioCapture*>(dwInstance);
+        AudioCaptureWin32* capture = reinterpret_cast<AudioCaptureWin32*>(dwInstance);
         WAVEHDR* pWaveHdr = reinterpret_cast<WAVEHDR*>(dwParam1);
         capture->ProcessWaveData(pWaveHdr);
     }
 }
 
-void AudioCapture::ProcessWaveData(WAVEHDR* pWaveHdr) {
+void AudioCaptureWin32::ProcessWaveData(WAVEHDR* pWaveHdr) {
     if (!isRecording) return;
 
     // Write recorded data to file
@@ -121,7 +121,7 @@ void AudioCapture::ProcessWaveData(WAVEHDR* pWaveHdr) {
     }
 }
 
-bool AudioCapture::WriteWaveHeader() {
+bool AudioCaptureWin32::WriteWaveHeader() {
     // RIFF header
     outputFile.write("RIFF", 4);
     DWORD fileSize = dataSize + 36; // Size of entire file - 8
@@ -141,7 +141,7 @@ bool AudioCapture::WriteWaveHeader() {
     return outputFile.good();
 }
 
-void AudioCapture::CleanupBuffers() {
+void AudioCaptureWin32::CleanupBuffers() {
     if (hWaveIn) {
         for (auto& header : waveHeaders) {
             if (header->dwFlags & WHDR_PREPARED) {

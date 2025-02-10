@@ -13,10 +13,10 @@
 #pragma comment(lib, "winmm.lib")
 
 // audio_capture.h
-class AudioCapture {
+class AudioCaptureWin32 {
 public:
-    AudioCapture();
-    ~AudioCapture();
+    AudioCaptureWin32();
+    ~AudioCaptureWin32();
 
     bool Initialize();
     bool StartRecording(const std::string& filename);
