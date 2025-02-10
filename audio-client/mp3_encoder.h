@@ -1,6 +1,8 @@
 #pragma once
-#include "audio_encoder.h"
 #include <lame/lame.h>
+#include <fstream>
+#include "audio_encoder.h"
+#include "audio_network.h"
 
 
 class MP3Encoder : public IAudioEncoder {
@@ -16,4 +18,14 @@ private:
     lame_global_flags* lameFlags;
     int bitrate;
     std::vector<uint8_t> mp3Buffer;
+};
+
+
+class NetworkMP3Encoder : public MP3Encoder {
+public:
+    NetworkMP3Encoder(int bitrate = 320);
+    std::vector<uint8_t> Encode(const float* data, size_t frameCount) override;
+
+private:
+    AudioSender sender;
 };

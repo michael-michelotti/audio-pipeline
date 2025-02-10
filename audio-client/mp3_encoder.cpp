@@ -49,6 +49,7 @@ std::vector<uint8_t> MP3Encoder::Encode(const float* data, size_t frameCount) {
     return std::vector<uint8_t>(mp3Buffer.begin(), mp3Buffer.begin() + encodedBytes);
 }
 
+
 std::vector<uint8_t> MP3Encoder::Finalize() {
     if (!lameFlags) return {};
 
@@ -61,4 +62,18 @@ std::vector<uint8_t> MP3Encoder::Finalize() {
     if (encodedBytes < 0) return {};
 
     return std::vector<uint8_t>(mp3Buffer.begin(), mp3Buffer.begin() + encodedBytes);
+}
+
+NetworkMP3Encoder::NetworkMP3Encoder(int bitrate) : MP3Encoder(bitrate) {
+    if (!sender.Connect("127.0.0.1", 12345)) {
+        throw std::runtime_error("Failed to connect to server");
+    }
+}
+
+std::vector<uint8_t> NetworkMP3Encoder::Encode(const float* data, size_t frameCount) {
+    auto encoded = MP3Encoder::Encode(data, frameCount);
+    if (!encoded.empty()) {
+        sender.SendData(encoded.data(), encoded.size());
+    }
+    return encoded;
 }

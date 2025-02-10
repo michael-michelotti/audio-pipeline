@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{039e8635-dd52-46f0-b826-779a1dd2a875}</ProjectGuid>
-    <RootNamespace>audiocapture</RootNamespace>
+    <ProjectGuid>{fdd21565-20b0-492e-b0af-5cc41f8da8ca}</ProjectGuid>
+    <RootNamespace>audioclient</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -129,6 +129,7 @@
   <ItemGroup>
     <ClCompile Include="audio_capture_wasapi.cpp" />
     <ClCompile Include="audio_capture_win32.cpp" />
+    <ClCompile Include="audio_network.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mp3_encoder.cpp" />
   </ItemGroup>
@@ -136,6 +137,7 @@
     <ClInclude Include="audio_capture_wasapi.h" />
     <ClInclude Include="audio_capture_win32.h" />
     <ClInclude Include="audio_encoder.h" />
+    <ClInclude Include="audio_network.h" />
     <ClInclude Include="mp3_encoder.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
