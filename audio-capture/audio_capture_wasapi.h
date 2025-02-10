@@ -32,11 +32,6 @@ private:
     WORD deviceChannels;
     WORD deviceBitsPerSample;
 
-    // Output WAV format
-    static constexpr WORD WAV_CHANNELS = 2;
-    static constexpr WORD WAV_BITS_PER_SAMPLE = 16;
-    static constexpr DWORD WAV_SAMPLE_RATE = 48000;
-
     // COM interfaces
     IMMDeviceEnumerator* pEnumerator;
     IMMDevice* pDevice;
@@ -45,6 +40,7 @@ private:
 
     HANDLE hCaptureThread;
     HANDLE hStopEvent;
+    HANDLE hCaptureEvent;
     std::ofstream outputFile;
     UINT32 bufferFrames;
     DWORD dataSize;

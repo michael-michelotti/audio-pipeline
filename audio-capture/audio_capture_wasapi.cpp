@@ -11,6 +11,7 @@ AudioCapture::AudioCapture()
     , pCaptureClient(nullptr)
     , hCaptureThread(nullptr)
     , hStopEvent(nullptr)
+    , hCaptureEvent(nullptr)
     , outputFile()
     , bufferFrames(0)
     , dataSize(0)
@@ -96,7 +97,7 @@ bool AudioCapture::Initialize() {
     // Initialize audio client
     hr = pAudioClient->Initialize(
         AUDCLNT_SHAREMODE_SHARED,
-        0,
+        AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
         0,
         0,
         deviceFormat,
@@ -134,9 +135,17 @@ bool AudioCapture::Initialize() {
         return false;
     }
 
-    // Allocate float buffer if needed
-    if (isFloat) {
-        floatBuffer.resize(bufferFrames * deviceChannels);
+    // Create capture event
+    hCaptureEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+    if (!hCaptureEvent) {
+        std::cerr << "Failed to create capture event." << std::endl;
+        return false;
+    }
+
+    hr = pAudioClient->SetEventHandle(hCaptureEvent);
+    if (FAILED(hr)) {
+        std::cerr << "Failed to set capture event handle." << std::endl;
+        return false;
     }
 
     return true;
@@ -144,11 +153,6 @@ bool AudioCapture::Initialize() {
 
 bool AudioCapture::StartRecording(const std::string& filename) {
     if (isRecording) return false;
-
-    if (!pAudioClient || !pCaptureClient) {
-        std::cerr << "Audio interfaces not properly initialized" << std::endl;
-        return false;
-    }
 
     outputFile.open(filename, std::ios::binary);
     if (!outputFile.is_open()) return false;
@@ -212,12 +216,14 @@ void AudioCapture::CaptureThread() {
     HRESULT hr;
     DWORD taskIndex = 0;
     HANDLE hTask = AvSetMmThreadCharacteristics(L"Audio", &taskIndex);
+
     if (hTask == nullptr) {
         std::cerr << "Failed to set thread characteristics." << std::endl;
     }
 
     BYTE* pData;
     UINT32 numFramesAvailable;
+    UINT32 bytesToWrite;
     DWORD flags;
 
     // Get device period for proper sleep timing
@@ -226,61 +232,49 @@ void AudioCapture::CaptureThread() {
     DWORD sleepTime = static_cast<DWORD>(hnsDefaultDevicePeriod / 10000); // Convert to milliseconds
 
     while (isRecording) {
-        if (WaitForSingleObject(hStopEvent, 0) == WAIT_OBJECT_0) {
+        // Wait indefinitely until new audio data is available or stop is requested
+        HANDLE waitHandles[] = { hCaptureEvent, hStopEvent };
+        DWORD waitResult = WaitForMultipleObjects(2, waitHandles, FALSE, INFINITE);
+
+        if (waitResult == WAIT_OBJECT_0 + 1) {  // Stop event signaled
             break;
         }
+        else if (waitResult == WAIT_OBJECT_0) {  // Capture event signaled
+            HRESULT hr = pCaptureClient->GetNextPacketSize(&numFramesAvailable);
+            if (SUCCEEDED(hr) && numFramesAvailable > 0) {
+                BYTE* pData;
+                DWORD flags;
 
-        hr = pCaptureClient->GetNextPacketSize(&numFramesAvailable);
-        if (FAILED(hr)) {
-            std::cerr << "Failed to get next packet size." << std::endl;
-            break;
-        }
+                hr = pCaptureClient->GetBuffer(
+                    &pData,
+                    &numFramesAvailable,
+                    &flags,
+                    nullptr,
+                    nullptr
+                );
 
-        if (numFramesAvailable > 0) {
-            hr = pCaptureClient->GetBuffer(
-                &pData,
-                &numFramesAvailable,
-                &flags,
-                nullptr,
-                nullptr
-            );
+                if (SUCCEEDED(hr)) {
+                    float* stereoData = reinterpret_cast<float*>(pData);
+                    UINT32 totalSamples  = numFramesAvailable * deviceChannels;
 
-            if (SUCCEEDED(hr)) {
-                if (!(flags & AUDCLNT_BUFFERFLAGS_SILENT)) {
-                    if (isFloat) {
-                        // Convert float samples to 16-bit PCM
-                        float* floatData = reinterpret_cast<float*>(pData);
-                        std::vector<short> pcmData(numFramesAvailable * deviceChannels);
-
-                        for (UINT32 i = 0; i < numFramesAvailable * deviceChannels; i++) {
-                            float sample = floatData[i];
-                            // Clamp to [-1, 1] and convert to 16-bit
-                            sample = std::max(-1.0f, std::min(1.0f, sample));
-                            pcmData[i] = static_cast<short>(sample * 32767.0f);
-                        }
-
-                        // Write converted data
-                        outputFile.write(reinterpret_cast<const char*>(pcmData.data()),
-                            numFramesAvailable * deviceChannels * sizeof(short));
-                        dataSize += numFramesAvailable * deviceChannels * sizeof(short);
+                    for (UINT32 i = 0; i < numFramesAvailable; ++i) {
+                        float leftSample = stereoData[i * 2];
+                        float& rightSample = stereoData[i * 2 + 1];
+                        rightSample = leftSample;
                     }
-                    else {
-                        // Write raw PCM data
-                        UINT32 bytesToWrite = numFramesAvailable * deviceChannels * sizeof(float);
-                        outputFile.write(reinterpret_cast<char*>(pData), bytesToWrite);
-                        dataSize += bytesToWrite;
-                    }
-                }
 
-                hr = pCaptureClient->ReleaseBuffer(numFramesAvailable);
-                if (FAILED(hr)) {
-                    std::cerr << "Failed to release buffer." << std::endl;
-                    break;
+                    bytesToWrite = numFramesAvailable * deviceChannels * sizeof(float);
+                    outputFile.write(reinterpret_cast<const char*>(stereoData), bytesToWrite);
+                    dataSize += bytesToWrite;
+
+                    hr = pCaptureClient->ReleaseBuffer(numFramesAvailable);
+                    if (FAILED(hr)) {
+                        std::cerr << "Failed to release buffer." << std::endl;
+                        break;
+                    }
                 }
             }
         }
-
-        Sleep(sleepTime);
     }
 
     if (hTask) {
@@ -302,12 +296,16 @@ void AudioCapture::WriteWaveHeader() {
 
     // Always write 16-bit PCM format
     WAVEFORMATEX waveFormat = {};
-    waveFormat.wFormatTag = WAVE_FORMAT_PCM;
-    waveFormat.nChannels = WAV_CHANNELS;
-    waveFormat.nSamplesPerSec = WAV_SAMPLE_RATE;
-    waveFormat.wBitsPerSample = WAV_BITS_PER_SAMPLE;
-    waveFormat.nBlockAlign = (WAV_CHANNELS * WAV_BITS_PER_SAMPLE) / 8;
-    waveFormat.nAvgBytesPerSec = WAV_SAMPLE_RATE * waveFormat.nBlockAlign;
+    waveFormat.wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
+    waveFormat.nChannels = deviceChannels;
+    waveFormat.nSamplesPerSec = deviceSampleRate;
+    waveFormat.wBitsPerSample = deviceBitsPerSample;
+    waveFormat.nBlockAlign = (waveFormat.nChannels * waveFormat.wBitsPerSample) / 8;
+    waveFormat.nAvgBytesPerSec = deviceSampleRate * waveFormat.nBlockAlign;
+
+    std::cout << "nChannels: " << waveFormat.nChannels << "\n"
+        << "nBlockAlign: " << waveFormat.nBlockAlign << "\n"
+        << "nAvgBytesPerSec: " << waveFormat.nAvgBytesPerSec << std::endl;
 
     outputFile.write(reinterpret_cast<const char*>(&waveFormat), 16);
 
@@ -322,10 +320,12 @@ void AudioCapture::CleanupCOM() {
     if (pDevice) pDevice->Release();
     if (pEnumerator) pEnumerator->Release();
     if (hStopEvent) CloseHandle(hStopEvent);
+    if (hCaptureEvent) CloseHandle(hCaptureEvent);
 
     pCaptureClient = nullptr;
     pAudioClient = nullptr;
     pDevice = nullptr;
     pEnumerator = nullptr;
     hStopEvent = nullptr;
+    hCaptureEvent = nullptr;
 }

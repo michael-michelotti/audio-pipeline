@@ -1,7 +1,11 @@
 #include "audio_capture_win32.h"
 
 
-AudioCaptureWin32::AudioCaptureWin32() : hWaveIn(nullptr), dataSize(0), isRecording(false), outputFile() {
+AudioCaptureWin32::AudioCaptureWin32() : 
+    hWaveIn(nullptr), 
+    dataSize(0), 
+    isRecording(false), 
+    outputFile() {
     // Initialize wave format structure
     waveFormat.wFormatTag = WAVE_FORMAT_PCM;
     waveFormat.nChannels = NUM_CHANNELS;
