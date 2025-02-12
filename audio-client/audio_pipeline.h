@@ -6,7 +6,7 @@
 
 struct AudioData {
 	std::vector<uint8_t> data;
-	size_t sampleCount;
+	size_t frameCount;
 	bool isEndOfStream = false;
 };
 

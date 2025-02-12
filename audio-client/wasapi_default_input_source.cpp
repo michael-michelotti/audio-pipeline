@@ -101,7 +101,7 @@ AudioData WasapiDefaultInputSource::GetAudioData() {
 	if (SUCCEEDED(hr) && numFrames > 0) {
 		hr = pCaptureClient->GetBuffer(&pData, &numFrames, &flags, nullptr, nullptr);
 		if (SUCCEEDED(hr)) {
-			data.sampleCount = numFrames;
+			data.frameCount = numFrames;
 			size_t byteSize = numFrames * deviceChannels * sizeof(float);
 			data.data.resize(byteSize);
 
@@ -122,7 +122,7 @@ AudioData WasapiDefaultInputSource::GetAudioData() {
 	}
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(1));
-	data.sampleCount = 0;
+	data.frameCount = 0;
 	return data;
 }
 

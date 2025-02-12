@@ -1,10 +1,15 @@
-#include "opus/opus.h"
 #include "opus_processor.h"
+#include <iostream>
 
 
 OpusProcessor::OpusProcessor(int bitrate,
 	int inputSampleRate,
-	int channels) : bitrate(bitrate), inputSampleRate(inputSampleRate), channels(channels) {
+	int channels,
+	int frameSize) : 
+	bitrate(bitrate), 
+	inputSampleRate(inputSampleRate), 
+	channels(channels), 
+	frameSize(frameSize) {
 
 	int error;
 	encoder = opus_encoder_create(inputSampleRate, channels, OPUS_APPLICATION_AUDIO, &error);
@@ -31,33 +36,54 @@ void OpusProcessor::Stop() {
 
 AudioData OpusProcessor::ProcessAudioData(const AudioData& input) {
 	AudioData output;
-	output.sampleCount = 0;
+	output.frameCount = 0;
 
-	if (input.sampleCount == 0 || input.data.empty()) return output;
+	if (input.frameCount == 0 || input.data.empty()) return output;
 
 	const float* inputBuffer = reinterpret_cast<const float*>(input.data.data());
-	size_t maxOutputSize = static_cast<size_t>(1.25 * input.sampleCount * channels + 7200);
+	size_t maxOutputSize = static_cast<size_t>(1.25 * input.frameCount * channels + 7200);
 	output.data.resize(maxOutputSize);
+
+	std::vector<float> frameBuffer(frameSize * channels, 0.0f);
 
 	size_t pos = 0;
 	size_t outputPos = 0;
+	opus_int32 encodedBytes = 0;
 
-	while (pos < input.sampleCount) {
-		opus_int32 encodedBytes = opus_encode_float(
-			encoder,
-			inputBuffer + (pos * channels),
-			960,
-			output.data.data() + outputPos,
-			output.data.size() - outputPos
-		);
+	while (pos < input.frameCount) {
+		size_t remainingFrames = input.frameCount - pos;
 
-		if (encodedBytes < 0) throw std::runtime_error("Opus encoding failed");
+		if (remainingFrames > frameSize) {
+			encodedBytes = opus_encode_float(
+				encoder,
+				inputBuffer + (pos * channels),
+				frameSize,
+				output.data.data() + outputPos,
+				output.data.size() - outputPos
+			);
 
-		outputPos += encodedBytes;
-		pos += 960;
+			if (encodedBytes < 0) throw std::runtime_error("Opus encoding failed");
+			outputPos += encodedBytes;
+			pos += frameSize;
+		}
+		else {
+			std::memcpy(frameBuffer.data(), inputBuffer + (pos * channels), remainingFrames * channels * sizeof(float));
+
+			encodedBytes = opus_encode_float(
+				encoder,
+				frameBuffer.data(),
+				frameSize,
+				output.data.data() + outputPos,
+				output.data.size() - outputPos
+			);
+
+			if (encodedBytes < 0) throw std::runtime_error("Opus encoding failed");
+			outputPos += encodedBytes;
+			pos += remainingFrames;
+		}
 	}
 
 	output.data.resize(outputPos);
-	output.sampleCount = input.sampleCount;
+	output.frameCount = input.frameCount;
 	return output;
 }
