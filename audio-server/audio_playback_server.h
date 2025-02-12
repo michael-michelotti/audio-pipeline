@@ -5,6 +5,7 @@
 #include <lame/lame.h>
 #include <vector>
 #include <fstream>
+#include <opus/opus.h>
 
 
 class AudioPlaybackServer {
@@ -14,7 +15,7 @@ public:
 
     bool Start(uint16_t port);
     void AcceptAndHandle();
-    void ConvertAndWriteAudio(const std::vector<uint8_t>& mp3Data);
+    void ConvertAndWriteAudio();
 
 private:
     SOCKET listenSock;
@@ -27,12 +28,14 @@ private:
     IAudioRenderClient* pRenderClient;
 
     // LAME decoder
-    hip_t hipDecoder;
     std::vector<short> pcmLeft;
     std::vector<short> pcmRight;
-    std::vector<short> pcmInterleaved;
+    std::vector<float> pcmInterleaved;
+    std::vector<uint8_t> rawOpusAudio;
 
     bool deviceIsFloat32;
     int deviceSampleRate;
     int deviceChannels;
+    OpusDecoder* decoder;
+
 };

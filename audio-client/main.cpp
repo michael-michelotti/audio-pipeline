@@ -16,7 +16,8 @@ int main() {
         auto source = std::make_shared<WasapiDefaultInputSource>();
         auto processor = std::make_shared<OpusProcessor>();
         auto oggFormat = std::make_unique<OggFileFormat>();
-        auto sink = std::make_shared<FileAudioSink>("test.ogg", std::move(oggFormat));
+        auto sink = std::make_shared<NetworkAudioSink>("192.168.1.161", 12345);
+        // auto sink = std::make_shared<FileAudioSink>("test.ogg", std::move(oggFormat));
         auto pipeline = std::make_shared<AudioPipeline>(source, processor, sink);
 
         std::cout << "Starting pipeline..." << std::endl;

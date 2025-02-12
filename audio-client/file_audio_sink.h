@@ -30,6 +30,9 @@ public:
 	void Finalize(std::ofstream& file) override;
 
 private:
+	void WriteOggPages(std::ofstream& file);
+	void FlushOggPages(std::ofstream& file);
+
 	ogg_int64_t packetNo;
 	ogg_int64_t granulePos;
 	ogg_stream_state oggStream;

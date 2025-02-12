@@ -1,44 +1,17 @@
+#define NOMINMAX
 #include <Audioclient.h>
 #include <mmdeviceapi.h>
 #include <stdexcept>
 #include <iostream>
 #include <vector>
 #include <functiondiscoverykeys_devpkey.h>
+#include <thread>
+#include <chrono>
+
+#include <opus/opus.h>
 
 #include "audio_playback_server.h"
 
-
-void WriteWavHeader(std::ofstream& file, uint32_t dataSize) {
-    // RIFF chunk
-    file.write("RIFF", 4);
-    uint32_t fileSize = dataSize + 36; // Size of entire file - 8
-    file.write(reinterpret_cast<const char*>(&fileSize), 4);
-    file.write("WAVE", 4);
-
-    // Format chunk
-    file.write("fmt ", 4);
-    uint32_t fmtSize = 16;
-    file.write(reinterpret_cast<const char*>(&fmtSize), 4);
-
-    // WAVE_FORMAT_PCM = 1
-    uint16_t audioFormat = 1;
-    uint16_t numChannels = 2; // Stereo
-    uint32_t sampleRate = 44100; // Standard MP3 sample rate
-    uint16_t bitsPerSample = 16; // HIP decoder outputs 16-bit PCM
-    uint16_t blockAlign = numChannels * (bitsPerSample / 8);
-    uint32_t byteRate = sampleRate * blockAlign;
-
-    file.write(reinterpret_cast<const char*>(&audioFormat), 2);
-    file.write(reinterpret_cast<const char*>(&numChannels), 2);
-    file.write(reinterpret_cast<const char*>(&sampleRate), 4);
-    file.write(reinterpret_cast<const char*>(&byteRate), 4);
-    file.write(reinterpret_cast<const char*>(&blockAlign), 2);
-    file.write(reinterpret_cast<const char*>(&bitsPerSample), 2);
-
-    // Data chunk
-    file.write("data", 4);
-    file.write(reinterpret_cast<const char*>(&dataSize), 4);
-}
 
 void CheckAudioFormat(WAVEFORMATEX* pwfx) {
     std::cout << "\nWASAPI Audio Format:" << std::endl;
@@ -47,23 +20,17 @@ void CheckAudioFormat(WAVEFORMATEX* pwfx) {
     std::cout << "Bits Per Sample: " << pwfx->wBitsPerSample << std::endl;
     std::cout << "Block Align: " << pwfx->nBlockAlign << std::endl;
     std::cout << "Format Tag: " << pwfx->wFormatTag << std::endl;
-
-    if (pwfx->wFormatTag == WAVE_FORMAT_EXTENSIBLE) {
-        WAVEFORMATEXTENSIBLE* pwfxex = reinterpret_cast<WAVEFORMATEXTENSIBLE*>(pwfx);
-        if (pwfxex->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT) {
-            std::cout << "Format is IEEE FLOAT" << std::endl;
-            // We're sending 16-bit PCM but WASAPI expects float!
-            std::cout << "WARNING: Format mismatch - we're sending 16-bit PCM to a float device" << std::endl;
-        }
-        else if (pwfxex->SubFormat == KSDATAFORMAT_SUBTYPE_PCM) {
-            std::cout << "Format is PCM" << std::endl;
-        }
-    }
 }
 
 AudioPlaybackServer::AudioPlaybackServer() : listenSock(INVALID_SOCKET), clientSock(INVALID_SOCKET),
     pEnumerator(nullptr), pDevice(nullptr), pAudioClient(nullptr),
     pRenderClient(nullptr), deviceIsFloat32(false), deviceSampleRate(0), deviceChannels(0) {
+
+    int error;
+    decoder = opus_decoder_create(48000, 2, &error);
+
+    pcmInterleaved.resize(480 * 2);
+    rawOpusAudio.resize(1024);
 
     // Initialize COM and Winsock
     HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
@@ -76,16 +43,6 @@ AudioPlaybackServer::AudioPlaybackServer() : listenSock(INVALID_SOCKET), clientS
         CoUninitialize();
         throw std::runtime_error("WSAStartup failed");
     }
-
-    // Initialize MP3 decoder and buffers
-    hipDecoder = hip_decode_init();
-    if (!hipDecoder) {
-        throw std::runtime_error("Failed to initialize LAME HIP decoder");
-    }
-
-    pcmLeft.resize(2304);
-    pcmRight.resize(2304);
-    pcmInterleaved.resize(2304 * 2);
 
     // Initialize audio playback
     hr = CoCreateInstance(
@@ -103,22 +60,6 @@ AudioPlaybackServer::AudioPlaybackServer() : listenSock(INVALID_SOCKET), clientS
     hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
     if (FAILED(hr)) {
         throw std::runtime_error("Failed to get default audio endpoint");
-    }
-
-    // After getting pDevice in your initialization:
-    IPropertyStore* pProps = nullptr;
-    hr = pDevice->OpenPropertyStore(STGM_READ, &pProps);
-    if (SUCCEEDED(hr)) {
-        PROPVARIANT varName;
-        PropVariantInit(&varName);
-
-        hr = pProps->GetValue(PKEY_Device_FriendlyName, &varName);
-        if (SUCCEEDED(hr)) {
-            std::wcout << L"Audio Device: " << varName.pwszVal << std::endl;
-            PropVariantClear(&varName);
-        }
-
-        pProps->Release();
     }
 
     // Activate audio client
@@ -180,76 +121,62 @@ AudioPlaybackServer::~AudioPlaybackServer() {
     CoUninitialize();
 }
 
-void AudioPlaybackServer::ConvertAndWriteAudio(const std::vector<uint8_t>& mp3Data) {
-    mp3data_struct mp3data;
-    int samples = hip_decode(hipDecoder,
-        const_cast<unsigned char*>(mp3Data.data()),
-        mp3Data.size(),
-        pcmLeft.data(),
-        pcmRight.data());
+void AudioPlaybackServer::ConvertAndWriteAudio() {
+    HRESULT hr;
 
-    //std::cout << "Decoded " << samples << " samples from " << mp3Data.size() << " bytes of MP3 data" << std::endl;
-
-    //// Check the first few samples to make sure we're getting non-zero audio
-    //if (samples > 0) {
-    //    std::cout << "First few samples (L,R): ";
-    //    int loops = samples < 5 ? samples : 5;
-    //    for (int i = 0; i < loops; i++) {
-    //        std::cout << "(" << pcmLeft[i] << "," << pcmRight[i] << ") ";
-    //    }
-    //    std::cout << std::endl;
-    //}
+    int samples = opus_decode_float(
+        decoder,
+        rawOpusAudio.data(),
+        rawOpusAudio.size(),
+        pcmInterleaved.data(),
+        480,
+        0
+    );
 
     if (samples <= 0) {
         std::cerr << "No samples decoded" << std::endl;
     }
-
-    // Make sure we have enough space in our interleaved buffer
-    if (static_cast<size_t>(samples * 2) > pcmInterleaved.size()) {
-        std::cerr << "Resizing interleaved buffer from " << pcmInterleaved.size()
-            << " to " << samples * 2 << std::endl;
-        pcmInterleaved.resize(samples * 2);
-    }
-
-    for (int i = 0; i < samples; i++) {
-        pcmInterleaved[i * 2] = pcmLeft[i];
-        pcmInterleaved[i * 2 + 1] = pcmRight[i];
-    }
+    std::cout << "Decoded " << samples << " samples. Sending to output" << std::endl;
 
     // Get ready state of audio client
     UINT32 numFramesPadding;
-    pAudioClient->GetCurrentPadding(&numFramesPadding);
+    hr = pAudioClient->GetCurrentPadding(&numFramesPadding);
+    if (FAILED(hr)) {
+        std::cerr << "Failed to get padding" << std::endl;
+        return;
+    }
 
     // Get available frames
     UINT32 bufferFrameCount;
     pAudioClient->GetBufferSize(&bufferFrameCount);
     UINT32 numFramesAvailable = bufferFrameCount - numFramesPadding;
 
-    BYTE* pData;
-    HRESULT hr = pRenderClient->GetBuffer(numFramesAvailable, &pData);
+    std::cout << "Buffer state: " << numFramesAvailable << " frames available, "
+        << numFramesPadding << " frames padding" << std::endl;
 
-    //std::cout << "Available frames: " << numFramesAvailable
-    //    << " (buffer: " << bufferFrameCount
-    //    << ", padding: " << numFramesPadding << ")" << std::endl;
-
-    if (SUCCEEDED(hr)) {
-        UINT32 framesToWrite = min(numFramesAvailable,
-            static_cast<UINT32>(samples));
-        //std::cout << "Writing " << framesToWrite << " frames" << std::endl;
-
-        // Double check our buffer sizes
-        if (framesToWrite * 2 * sizeof(short) > pcmInterleaved.size() * sizeof(short)) {
-            std::cerr << "Buffer size mismatch!" << std::endl;
-            framesToWrite = pcmInterleaved.size() / 2;  // Adjust to prevent overflow
-        }
-
-        memcpy(pData, pcmInterleaved.data(), framesToWrite * 2 * sizeof(short));
-
-        hr = pRenderClient->ReleaseBuffer(framesToWrite, 0);
-        if (FAILED(hr)) {
-            std::cerr << "Failed to release buffer" << std::endl;
-        }
+    // Only proceed if we have enough space
+    if (numFramesAvailable < static_cast<UINT32>(samples)) {
+        std::cout << "Buffer too full, waiting..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        return;
     }
+
+    BYTE* pData;
+    hr = pRenderClient->GetBuffer(samples, &pData);  // Request exactly what we decoded
+    if (FAILED(hr)) {
+        std::cerr << "Failed to get buffer with hr: " << hr << std::endl;
+        return;
+    }
+
+    memcpy(pData, pcmInterleaved.data(), samples * deviceChannels * sizeof(float));
+
+
+    hr = pRenderClient->ReleaseBuffer(samples, 0);
+    if (FAILED(hr)) {
+        std::cerr << "Failed to release buffer" << std::endl;
+    }
+
+    std::cout << "Successfully wrote " << samples << " frames to audio device" << std::endl;
 }
 
 bool AudioPlaybackServer::Start(uint16_t port) {
@@ -269,11 +196,12 @@ bool AudioPlaybackServer::Start(uint16_t port) {
         return false;
     }
 
-    // Start audio playback
     HRESULT hr = pAudioClient->Start();
     if (FAILED(hr)) {
+        std::cerr << "Failed to start audio client: " << hr << std::endl;
         return false;
     }
+    std::cout << "Audio client successfully started" << std::endl;
 
     return true;
 }
@@ -296,10 +224,9 @@ void AudioPlaybackServer::AcceptAndHandle() {
         }
 
         // Receive the actual data
-        std::vector<uint8_t> mp3Buffer(dataSize);
         size_t totalReceived = 0;
         while (totalReceived < dataSize) {
-            int received = recv(clientSock, (char*)mp3Buffer.data() + totalReceived,
+            int received = recv(clientSock, (char*)rawOpusAudio.data() + totalReceived,
                 dataSize - totalReceived, 0);
             if (received <= 0) {
                 return;
@@ -307,7 +234,7 @@ void AudioPlaybackServer::AcceptAndHandle() {
             totalReceived += received;
         }
 
-        ConvertAndWriteAudio(mp3Buffer);
         std::cout << "Received and playing chunk of size: " << dataSize << " bytes\n";
+        ConvertAndWriteAudio();
     }
 }

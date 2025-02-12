@@ -130,10 +130,12 @@
     <ClCompile Include="audio_playback_server.cpp" />
     <ClCompile Include="audio_server.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="opus_playback_server.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="audio_playback_server.h" />
     <ClInclude Include="audio_server.h" />
+    <ClInclude Include="opus_playback_server.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

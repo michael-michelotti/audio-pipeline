@@ -3,7 +3,7 @@
 #include <iostream>
 
 
-// MP3 FILE FORAMT
+// ----- MP3 FILE FORMAT -----
 void Mp3FileFormat::WriteHeader(std::ofstream& file) {
     const char id3Header[]{
         'I', 'D', '3',          // ID3 identifier
@@ -26,7 +26,7 @@ void Mp3FileFormat::Finalize(std::ofstream& file) {
 }
 
 
-// OGG FILE FORMAT
+// ----- OGG FILE FORMAT ----- 
 OggFileFormat::OggFileFormat() : packetNo(0), granulePos(0) {
     oggSerialNo = rand();
     ogg_stream_init(&oggStream, oggSerialNo);
@@ -38,6 +38,22 @@ OggFileFormat::~OggFileFormat() {
     }
     catch (const std::exception& e) {
         std::cout << "Error closing Ogg stream" << std::endl;
+    }
+}
+
+void OggFileFormat::WriteOggPages(std::ofstream& file) {
+    ogg_page oggPage;
+    while (ogg_stream_pageout(&oggStream, &oggPage) > 0) {
+        file.write(reinterpret_cast<const char*>(oggPage.header), oggPage.header_len);
+        file.write(reinterpret_cast<const char*>(oggPage.body), oggPage.body_len);
+    }
+}
+
+void OggFileFormat::FlushOggPages(std::ofstream& file) {
+    ogg_page oggPage;
+    while (ogg_stream_flush(&oggStream, &oggPage) > 0) {
+        file.write(reinterpret_cast<const char*>(oggPage.header), oggPage.header_len);
+        file.write(reinterpret_cast<const char*>(oggPage.body), oggPage.body_len);
     }
 }
 
@@ -102,11 +118,7 @@ void OggFileFormat::WriteHeader(std::ofstream& file) {
     }
 
     // Flush header pages immediately and write to file
-    ogg_page oggPage;
-    while (ogg_stream_flush(&oggStream, &oggPage) > 0) {
-        file.write(reinterpret_cast<const char*>(oggPage.header), oggPage.header_len);
-        file.write(reinterpret_cast<const char*>(oggPage.body), oggPage.body_len);
-    }
+    FlushOggPages(file);
 
     granulePos = -OPUS_PRESKIP;
 }
@@ -114,8 +126,6 @@ void OggFileFormat::WriteHeader(std::ofstream& file) {
 void OggFileFormat::WriteData(std::ofstream& file, const AudioData& data) {
     if (!file.is_open()) throw std::runtime_error(" file not open");
     if (data.frameCount == 0 || data.data.empty()) return;
-
-    std::cout << "Ogg recevied: " << data.frameCount << " frames" << std::endl;
 
     std::vector<unsigned char> packetData(data.data.begin(), data.data.end());
 
@@ -133,23 +143,14 @@ void OggFileFormat::WriteData(std::ofstream& file, const AudioData& data) {
     }
 
     ogg_page oggPage;
-    while (ogg_stream_pageout(&oggStream, &oggPage) > 0) {
-        file.write(reinterpret_cast<const char*>(oggPage.header), oggPage.header_len);
-        file.write(reinterpret_cast<const char*>(oggPage.body), oggPage.body_len);
-    }
+    WriteOggPages(file);
 }
 
 void OggFileFormat::Finalize(std::ofstream& file) {
     ogg_page oggPage;
     ogg_stream_flush(&oggStream, &oggPage);
-
     int result = ogg_stream_eos(&oggStream);
-
-    while (ogg_stream_flush(&oggStream, &oggPage) > 0) {
-        file.write(reinterpret_cast<const char*>(oggPage.header), oggPage.header_len);
-        file.write(reinterpret_cast<const char*>(oggPage.body), oggPage.body_len);
-    }
-
+    FlushOggPages(file);
     ogg_stream_clear(&oggStream);
 }
 
