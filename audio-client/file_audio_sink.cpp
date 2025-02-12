@@ -2,7 +2,14 @@
 
 
 void Mp3FileFormat::WriteHeader(std::ofstream& file) {
-    // Write MP3 ID3 tags/headers
+    const char id3Header[]{
+        'I', 'D', '3',          // ID3 identifier
+        0x03, 0x00,             // Version 2.3.0
+        0x00,                   // Flags (none set)
+        0x00, 0x00, 0x00, 0x00  // Size
+    };
+
+    file.write(id3Header, sizeof(id3Header));
 }
 
 void Mp3FileFormat::WriteData(std::ofstream& file, const AudioData& data) {

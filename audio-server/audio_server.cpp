@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <stdexcept>
+#include <fstream>
 
 #include "audio_server.h"
 
@@ -50,6 +51,10 @@ void AudioServer::AcceptAndHandle() {
         return;
     }
 
+    std::ofstream file;
+    file.open("test.mp3", std::ios::binary);
+    if (!file) throw std::runtime_error("file open failure");
+
     std::cout << "Client connected. Receiving data..." << std::endl;
 
     while (true) {
@@ -62,6 +67,7 @@ void AudioServer::AcceptAndHandle() {
         // Receive the actual data
         std::vector<uint8_t> buffer(dataSize);
         size_t totalReceived = 0;
+
         while (totalReceived < dataSize) {
             int received = recv(clientSock, (char*)buffer.data() + totalReceived,
                 dataSize - totalReceived, 0);
@@ -69,6 +75,9 @@ void AudioServer::AcceptAndHandle() {
                 return;
             }
             totalReceived += received;
+
+            file.write(reinterpret_cast<const char*>(buffer.data()), dataSize);
+            file.flush();
         }
 
         // Print the size of received data chunk

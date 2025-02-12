@@ -7,13 +7,14 @@
 #include "wasapi_default_input_source.h"
 #include "mp3_processor.h"
 #include "file_audio_sink.h"
+#include "network_audio_sink.h"
 
 
 int main() {
     try {
         auto source = std::make_shared<WasapiDefaultInputSource>();
         auto processor = std::make_shared<Mp3Processor>(320);
-        auto sink = std::make_shared<FileAudioSink>("output.mp3", std::make_unique<Mp3FileFormat>());
+        auto sink = std::make_shared<NetworkAudioSink>("127.0.0.1", 12345);
         auto pipeline = std::make_shared<AudioPipeline>(source, processor, sink);
 
         std::cout << "Starting pipeline..." << std::endl;
