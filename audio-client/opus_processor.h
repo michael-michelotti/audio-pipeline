@@ -7,7 +7,7 @@ public:
 	OpusProcessor(int bitrate = 128,
 		int inputSampleRate = 48000,
 		int channels = 2,
-		int frameSize = 960);
+		int frameSize = 480);
 	~OpusProcessor();
 	void Start() override;
 	void Stop() override;
@@ -19,5 +19,5 @@ private:
 	int bitrate;
 	int inputSampleRate;
 	int channels;
-	int frameSize;
+	int frameSize;	
 };

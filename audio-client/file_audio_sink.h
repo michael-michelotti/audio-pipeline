@@ -1,6 +1,7 @@
 #pragma once
 #include <fstream>
 #include <string>
+#include <ogg/ogg.h>
 #include "audio_pipeline.h"
 
 
@@ -17,6 +18,22 @@ public:
 	void WriteHeader(std::ofstream& file) override;
 	void WriteData(std::ofstream& file, const AudioData& data) override;
 	void Finalize(std::ofstream& file) override;
+};
+
+class OggFileFormat : public IAudioFileFormat {
+	static constexpr int OPUS_PRESKIP = 312;
+public:
+	OggFileFormat();
+	~OggFileFormat();
+	void WriteHeader(std::ofstream& file) override;
+	void WriteData(std::ofstream& file, const AudioData& data) override;
+	void Finalize(std::ofstream& file) override;
+
+private:
+	ogg_int64_t packetNo;
+	ogg_int64_t granulePos;
+	ogg_stream_state oggStream;
+	int oggSerialNo;
 };
 
 class FileAudioSink : public IAudioSink {

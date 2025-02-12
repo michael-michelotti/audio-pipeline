@@ -84,6 +84,7 @@ AudioData OpusProcessor::ProcessAudioData(const AudioData& input) {
 	}
 
 	output.data.resize(outputPos);
-	output.frameCount = input.frameCount;
+	std::cout << "pos: " << pos << ". Frame count: " << input.frameCount << std::endl;
+	output.frameCount = pos;
 	return output;
 }
