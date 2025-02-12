@@ -128,7 +128,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="audio_pipeline.cpp" />
-    <ClCompile Include="mp3_file_sink.cpp" />
+    <ClCompile Include="file_audio_sink.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mp3_processor.cpp" />
     <ClCompile Include="wasapi_default_input_source.cpp" />
@@ -136,7 +136,7 @@
   <ItemGroup>
     <ClInclude Include="audio_encoder.h" />
     <ClInclude Include="audio_pipeline.h" />
-    <ClInclude Include="mp3_file_sink.h" />
+    <ClInclude Include="file_audio_sink.h" />
     <ClInclude Include="mp3_processor.h" />
     <ClInclude Include="wasapi_default_input_source.h" />
   </ItemGroup>
