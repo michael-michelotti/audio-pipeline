@@ -2,8 +2,10 @@ build/
 .vs/
 Debug/
 Release/
+archive/
 *.user
 *.filters
 *.vcxproj.user
 *.wav
 *.mp3
+*.ogg
