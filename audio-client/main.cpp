@@ -6,15 +6,31 @@
 #include "audio_pipeline.h"
 #include "wasapi_default_input_source.h"
 #include "mp3_processor.h"
+#include "mp3_file_sink.h"
 
 
 int main() {
-    std::shared_ptr<WasapiDefaultInputSource> source;
-    std::shared_ptr<Mp3Processor> processor;
-    std::shared_ptr<IAudioSink> sink;
+    try {
+        auto source = std::make_shared<WasapiDefaultInputSource>();
+        auto processor = std::make_shared<Mp3Processor>(320);
+        auto sink = std::make_shared<Mp3AudioSink>("output.mp3");
+        auto pipeline = std::make_shared<AudioPipeline>(source, processor, sink);
 
-    AudioPipeline* pipeline = new AudioPipeline(source, processor, sink);
-    pipeline->Start();
+        std::cout << "Starting pipeline..." << std::endl;
+        pipeline->Start();
+
+        std::cout << "Recording for 5 seconds..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+
+        std::cout << "Stopping pipeline..." << std::endl;
+        pipeline->Stop();
+
+        std::cout << "Clean shutdown complete" << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
 
     return 0;
 }

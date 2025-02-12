@@ -104,12 +104,25 @@ AudioData WasapiDefaultInputSource::GetAudioData() {
 			data.sampleCount = numFrames;
 			size_t byteSize = numFrames * deviceChannels * sizeof(float);
 			data.data.resize(byteSize);
-			memcpy(data.data.data(), pData, byteSize);
+
+			// Get float pointer to the raw data
+			const float* inputBuffer = reinterpret_cast<float*>(pData);
+			float* outputBuffer = reinterpret_cast<float*>(data.data.data());
+
+			// Copy left channel to both channels
+			for (UINT32 i = 0; i < numFrames; i++) {
+				float leftSample = inputBuffer[i * 2];     // Left channel
+				outputBuffer[i * 2] = leftSample;          // Left
+				outputBuffer[i * 2 + 1] = leftSample;      // Right
+			}
 
 			pCaptureClient->ReleaseBuffer(numFrames);
+			return data;
 		}
 	}
 
+	std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	data.sampleCount = 0;
 	return data;
 }
 

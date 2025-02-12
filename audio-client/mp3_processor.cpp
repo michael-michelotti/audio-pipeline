@@ -1,5 +1,7 @@
 #include "mp3_processor.h"
 
+#include <iostream>
+
 
 Mp3Processor::Mp3Processor(
 	int bitrate, 
@@ -17,6 +19,7 @@ Mp3Processor::Mp3Processor(
 	lame_set_in_samplerate(lameFlags, inputSampleRate);
 	lame_set_out_samplerate(lameFlags, outputSampleRate);
 	lame_set_num_channels(lameFlags, channels);
+	lame_set_mode(lameFlags, STEREO);
 	lame_set_brate(lameFlags, bitrate);
 	lame_set_quality(lameFlags, 2);
 	lame_set_VBR(lameFlags, vbr_off);
@@ -41,10 +44,15 @@ void Mp3Processor::Stop() {
 }
 
 AudioData Mp3Processor::ProcessAudioData(const AudioData& input) {
+	static int packetCount = 0;
 	AudioData output;
+
+	if (input.sampleCount == 0 || input.data.empty()) return output;
 
 	const float* inputBuffer = reinterpret_cast<const float*>(input.data.data());
 	size_t numSamples = input.sampleCount * channels;
+	size_t maxOutputSize = static_cast<size_t>(1.25 * input.sampleCount * channels + 7200);
+	output.data.resize(maxOutputSize);
 
 	int encodedBytes = lame_encode_buffer_interleaved_ieee_float(
 		lameFlags,

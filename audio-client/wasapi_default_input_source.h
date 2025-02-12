@@ -2,11 +2,12 @@
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-
+#include "mmdeviceapi.h"
+#include "Audioclient.h"
 #include "audio_pipeline.h"
 
 
-class WasapiDefaultInputSource : IAudioSource {
+class WasapiDefaultInputSource : public IAudioSource {
 public:
 	WasapiDefaultInputSource();
 	~WasapiDefaultInputSource() override;
