@@ -133,6 +133,7 @@
     <ClCompile Include="mp3_processor.cpp" />
     <ClCompile Include="network_audio_sink.cpp" />
     <ClCompile Include="opus_processor.cpp" />
+    <ClCompile Include="portaudio_input_source.cpp" />
     <ClCompile Include="wasapi_default_input_source.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -142,6 +143,7 @@
     <ClInclude Include="mp3_processor.h" />
     <ClInclude Include="network_audio_sink.h" />
     <ClInclude Include="opus_processor.h" />
+    <ClInclude Include="portaudio_input_source.h" />
     <ClInclude Include="wasapi_default_input_source.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

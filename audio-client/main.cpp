@@ -5,6 +5,7 @@
 #include <chrono>
 #include "audio_pipeline.h"
 #include "wasapi_default_input_source.h"
+#include "portaudio_input_source.h"
 #include "mp3_processor.h"
 #include "opus_processor.h"
 #include "file_audio_sink.h"
@@ -13,10 +14,11 @@
 
 int main() {
     try {
-        auto source = std::make_shared<WasapiDefaultInputSource>();
+        // auto source = std::make_shared<WasapiDefaultInputSource>();
+        auto source = std::make_shared<PortaudioInputSource>();
         auto processor = std::make_shared<OpusProcessor>();
         auto oggFormat = std::make_unique<OggFileFormat>();
-        auto sink = std::make_shared<NetworkAudioSink>("192.168.1.161", 12345);
+        auto sink = std::make_shared<NetworkAudioSink>("127.0.0.1", 12345);
         // auto sink = std::make_shared<FileAudioSink>("test.ogg", std::move(oggFormat));
         auto pipeline = std::make_shared<AudioPipeline>(source, processor, sink);
 
