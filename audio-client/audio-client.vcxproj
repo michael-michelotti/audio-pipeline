@@ -131,6 +131,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="file_format.cpp" />
     <ClCompile Include="media_pipeline.cpp" />
     <ClCompile Include="file_audio_sink.cpp" />
     <ClCompile Include="main.cpp" />
@@ -141,10 +142,13 @@
     <ClCompile Include="network_audio_sink.cpp" />
     <ClCompile Include="opus_processor.cpp" />
     <ClCompile Include="portaudio_input_source.cpp" />
+    <ClCompile Include="theora_processor.cpp" />
     <ClCompile Include="wasapi_audio_input_source.cpp" />
+    <ClCompile Include="wmf_video_input_source.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="audio_encoder.h" />
+    <ClInclude Include="file_format.h" />
     <ClInclude Include="media_pipeline.h" />
     <ClInclude Include="file_audio_sink.h" />
     <ClInclude Include="media_queue.h" />
@@ -154,7 +158,9 @@
     <ClInclude Include="network_audio_sink.h" />
     <ClInclude Include="opus_processor.h" />
     <ClInclude Include="portaudio_input_source.h" />
+    <ClInclude Include="theora_processor.h" />
     <ClInclude Include="wasapi_audio_input_source.h" />
+    <ClInclude Include="wmf_video_input_source.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

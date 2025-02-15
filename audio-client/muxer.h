@@ -1,7 +1,9 @@
 #pragma once
 #include <atomic>
+#include <ogg/ogg.h>
 #include "media_queue.h"
 #include "media_pipeline.h"
+#include "file_format.h"
 
 
 class IMuxer {
@@ -18,6 +20,7 @@ public:
 class OggMuxer : public IMuxer {
 public:
 	OggMuxer(std::shared_ptr<MediaQueue> mediaQueue);
+	~OggMuxer();
 	void Start() override;
 	void Stop() override;
 	void MuxerLoop() override;
@@ -29,4 +32,12 @@ private:
 	std::shared_ptr<std::ostream> output;
 	std::atomic<bool> isRunning{false};
 	std::thread muxerThread;
+
+	OggFileFormat oggFormat;
+	std::ofstream outputFile;
+
+	ogg_int64_t packetNo;
+	ogg_int64_t granulePos;
+	ogg_stream_state oggStream;
+	int oggSerialNo;
 };

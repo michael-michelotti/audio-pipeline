@@ -11,6 +11,8 @@
 #include "file_audio_sink.h"
 #include "network_audio_sink.h"
 #include "muxer_audio_sink.h"
+#include "wmf_video_input_source.h"
+#include "theora_processor.h"
 
 #include "muxer.h"
 #include "media_queue.h"
@@ -28,22 +30,33 @@ int main() {
             audio_sink
         );
 
+        auto video_source = std::make_shared<WebcamSource>();
+        auto video_processor = std::make_shared<TheoraProcessor>();
+        auto video_sink = std::make_shared<MuxerAudioSink>(muxerQueue);
+        auto video_pipeline = std::make_shared<MediaPipeline>(
+            video_source,
+            video_processor,
+            video_sink
+        );
         
+
         auto ogg_muxer = std::make_shared<OggMuxer>(muxerQueue);
         std::cout << "Starting media muxer..." << std::endl;
         ogg_muxer->Start();
 
         std::cout << "Starting media pipelines..." << std::endl;
         audio_pipeline->Start();
+        video_pipeline->Start();
 
         std::cout << "Recording for 5 seconds..." << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        std::this_thread::sleep_for(std::chrono::seconds(10));
 
         std::cout << "Stopping media muxer..." << std::endl;
         ogg_muxer->Stop();
 
         std::cout << "Stopping media pipelines..." << std::endl;
         audio_pipeline->Stop();
+        video_pipeline->Stop();
 
         std::cout << "Clean shutdown complete" << std::endl;
     }

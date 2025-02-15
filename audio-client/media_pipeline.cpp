@@ -2,6 +2,7 @@
 #include <vector>
 #include <mutex>
 #include <queue>
+#include <iostream>
 
 #include "media_pipeline.h"
 #include "media_queue.h"
@@ -56,6 +57,10 @@ void MediaPipeline::Stop() {
 void MediaPipeline::SourceThread() {
     while (isRunning) {
         MediaData data = source->GetMediaData();
+        // Don't add empty packets to the queue!
+        if (data.data.empty()) {
+            continue;
+        }
         rawQueue.Push(std::move(data));
     }
 }

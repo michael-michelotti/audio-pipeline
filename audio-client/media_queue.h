@@ -25,7 +25,9 @@ struct VideoFormat {
 	enum class PixelFormat {
 		YUV420P,
 		RGB24,
-		BGR24
+		BGR24,
+		THEORA,
+		THEORA_HEADERS
 	} format;
 
 	float frameRate;
