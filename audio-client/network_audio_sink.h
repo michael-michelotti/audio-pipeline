@@ -2,17 +2,17 @@
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <WinSock2.h>
-#include "audio_pipeline.h"
+#include "media_pipeline.h"
 
 
-class NetworkAudioSink : public IAudioSink {
+class NetworkAudioSink : public IMediaSink {
 public:
 	NetworkAudioSink(const std::string& address, USHORT port);
 	~NetworkAudioSink();
 
 	void Start() override;
 	void Stop() override;
-	void ConsumeAudioData(const AudioData& data) override;
+	void ConsumeMediaData(const MediaData& data) override;
 
 private:
 	SOCKET sock;

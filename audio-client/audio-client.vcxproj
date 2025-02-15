@@ -76,6 +76,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -90,6 +91,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -104,6 +106,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -118,6 +121,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -127,24 +131,30 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="audio_pipeline.cpp" />
+    <ClCompile Include="media_pipeline.cpp" />
     <ClCompile Include="file_audio_sink.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="media_queue.cpp" />
     <ClCompile Include="mp3_processor.cpp" />
+    <ClCompile Include="muxer.cpp" />
+    <ClCompile Include="muxer_audio_sink.cpp" />
     <ClCompile Include="network_audio_sink.cpp" />
     <ClCompile Include="opus_processor.cpp" />
     <ClCompile Include="portaudio_input_source.cpp" />
-    <ClCompile Include="wasapi_default_input_source.cpp" />
+    <ClCompile Include="wasapi_audio_input_source.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="audio_encoder.h" />
-    <ClInclude Include="audio_pipeline.h" />
+    <ClInclude Include="media_pipeline.h" />
     <ClInclude Include="file_audio_sink.h" />
+    <ClInclude Include="media_queue.h" />
     <ClInclude Include="mp3_processor.h" />
+    <ClInclude Include="muxer.h" />
+    <ClInclude Include="muxer_audio_sink.h" />
     <ClInclude Include="network_audio_sink.h" />
     <ClInclude Include="opus_processor.h" />
     <ClInclude Include="portaudio_input_source.h" />
-    <ClInclude Include="wasapi_default_input_source.h" />
+    <ClInclude Include="wasapi_audio_input_source.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

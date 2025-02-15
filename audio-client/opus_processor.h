@@ -1,8 +1,8 @@
 #pragma once
 #include "opus/opus.h"
-#include "audio_pipeline.h"
+#include "media_pipeline.h"
 
-class OpusProcessor : public IAudioProcessor {
+class OpusProcessor : public IMediaProcessor {
 public:
 	OpusProcessor(int bitrate = 128,
 		int inputSampleRate = 48000,
@@ -11,7 +11,7 @@ public:
 	~OpusProcessor();
 	void Start() override;
 	void Stop() override;
-	AudioData ProcessAudioData(const AudioData& input) override;
+	MediaData ProcessMediaData(const MediaData& input) override;
 
 private:
 	OpusEncoder* encoder;

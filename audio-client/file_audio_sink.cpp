@@ -15,7 +15,7 @@ void Mp3FileFormat::WriteHeader(std::ofstream& file) {
     file.write(id3Header, sizeof(id3Header));
 }
 
-void Mp3FileFormat::WriteData(std::ofstream& file, const AudioData& data) {
+void Mp3FileFormat::WriteData(std::ofstream& file, const MediaData& data) {
     if (!file.is_open()) throw std::runtime_error("MP3 file not open");
     file.write(reinterpret_cast<const char*>(data.data.data()),
         data.data.size());
@@ -123,9 +123,9 @@ void OggFileFormat::WriteHeader(std::ofstream& file) {
     granulePos = -OPUS_PRESKIP;
 }
 
-void OggFileFormat::WriteData(std::ofstream& file, const AudioData& data) {
+void OggFileFormat::WriteData(std::ofstream& file, const MediaData& data) {
     if (!file.is_open()) throw std::runtime_error(" file not open");
-    if (data.frameCount == 0 || data.data.empty()) return;
+    // if (data.frameCount == 0 || data.data.empty()) return;
 
     std::vector<unsigned char> packetData(data.data.begin(), data.data.end());
 
@@ -134,7 +134,7 @@ void OggFileFormat::WriteData(std::ofstream& file, const AudioData& data) {
     oggData.bytes = packetData.size();
     oggData.b_o_s = 0;
     oggData.e_o_s = 0;
-    granulePos += data.frameCount;
+    // granulePos += data.frameCount;
     oggData.granulepos = granulePos;
     oggData.packetno = packetNo++;
 
@@ -174,7 +174,7 @@ void FileAudioSink::Stop() {
     }
 }
 
-void FileAudioSink::ConsumeAudioData(const AudioData& data) {
+void FileAudioSink::ConsumeMediaData(const MediaData& data) {
     format->WriteData(outputFile, data);
 }
 

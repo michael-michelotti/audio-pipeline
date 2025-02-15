@@ -4,16 +4,16 @@
 #include <Windows.h>
 #include "mmdeviceapi.h"
 #include "Audioclient.h"
-#include "audio_pipeline.h"
+#include "media_pipeline.h"
 
 
-class WasapiDefaultInputSource : public IAudioSource {
+class WasapiAudioInputSource : public IMediaSource {
 public:
-	WasapiDefaultInputSource();
-	~WasapiDefaultInputSource() override;
+	WasapiAudioInputSource();
+	~WasapiAudioInputSource() override;
 	void Start() override;
 	void Stop() override;
-	AudioData GetAudioData() override;
+	MediaData GetMediaData() override;
 
 private:
 	bool Initialize();

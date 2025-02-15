@@ -2,10 +2,12 @@
 #include <Audioclient.h>
 #include <mmdeviceapi.h>
 #include <iostream>
-#include "wasapi_default_input_source.h"
+#include "wasapi_audio_input_source.h"
+#include "media_queue.h"
 
+#define WASAPI_LOGGING 0
 
-WasapiDefaultInputSource::WasapiDefaultInputSource()
+WasapiAudioInputSource::WasapiAudioInputSource()
 	: deviceSampleRate(0)
 	, deviceChannels(0)
 	, deviceBitsPerSample(0)
@@ -23,14 +25,18 @@ WasapiDefaultInputSource::WasapiDefaultInputSource()
 	if (!Initialize()) {
 		throw std::runtime_error("Failed to initialize WASAPI input source");
 	}
+
+	if (WASAPI_LOGGING) {
+		std::cout << "<WASAPI Source> Successfully initialized WASAPI audio pipeline input source" << std::endl;
+	}
 }
 
-WasapiDefaultInputSource::~WasapiDefaultInputSource() {
+WasapiAudioInputSource::~WasapiAudioInputSource() {
 	CleanupCOM();
 	CoUninitialize();
 }
 
-bool WasapiDefaultInputSource::Initialize() {
+bool WasapiAudioInputSource::Initialize() {
 	HRESULT hr;
 
 	hr = CoCreateInstance(
@@ -57,10 +63,13 @@ bool WasapiDefaultInputSource::Initialize() {
 	deviceChannels = deviceFormat->nChannels;
 	deviceBitsPerSample = deviceFormat->wBitsPerSample;
 
-	std::cout << "Input Device format:"
-		<< "\n Sample rate: " << deviceSampleRate
-		<< "\n Channels: " << deviceChannels
-		<< "\n Bits per sample: " << deviceBitsPerSample << std::endl;
+	if (WASAPI_LOGGING) {
+		std::cout << "<WASAPI Source> WASAPI audio input source is being initialized with the following device parameters:" << std::endl;
+		std::cout << "Input Device format:"
+			<< "\n Sample rate: " << deviceSampleRate
+			<< "\n Channels: " << deviceChannels
+			<< "\n Bits per sample: " << deviceBitsPerSample << std::endl;
+	}
 
 	hr = pAudioClient->Initialize(
 		AUDCLNT_SHAREMODE_SHARED,
@@ -81,17 +90,30 @@ bool WasapiDefaultInputSource::Initialize() {
 	return true;
 }
 
-void WasapiDefaultInputSource::Start() {
+void WasapiAudioInputSource::Start() {
 	if (pAudioClient) HRESULT hr = pAudioClient->Start();
+	if (WASAPI_LOGGING) {
+		std::cout << "<WASAPI Source> Started audio client on WASAPI audio input source" << std::endl;
+	}
 }
 
-void WasapiDefaultInputSource::Stop() {
+void WasapiAudioInputSource::Stop() {
 	if (pAudioClient) pAudioClient->Stop();
+	if (WASAPI_LOGGING) {
+		std::cout << "<WASAPI Source> Stopped audio client on WASAPI audio input source" << std::endl;
+	}
 }
 
 
-AudioData WasapiDefaultInputSource::GetAudioData() {
-	AudioData data;
+MediaData WasapiAudioInputSource::GetMediaData() {
+	MediaData data;
+	AudioFormat format;
+	format.sampleRate = deviceSampleRate;
+	format.channels = deviceChannels;
+	format.format = AudioFormat::SampleFormat::PCM_FLOAT;
+	data.format = format;
+	data.type = MediaData::Type::Audio;
+
 	BYTE* pData;
 	UINT32 numFrames = 0;
 	DWORD flags;
@@ -99,9 +121,11 @@ AudioData WasapiDefaultInputSource::GetAudioData() {
 	// Currently assumes one frame is 32 bit float, 2 channels (64 bits per frame)
 	HRESULT hr = pCaptureClient->GetNextPacketSize(&numFrames);
 	if (SUCCEEDED(hr) && numFrames > 0) {
+		if (WASAPI_LOGGING) {
+			std::cout << "<WASAPI Source> Received audio packet with " << numFrames << " frames." << std::endl;
+		}
 		hr = pCaptureClient->GetBuffer(&pData, &numFrames, &flags, nullptr, nullptr);
 		if (SUCCEEDED(hr)) {
-			data.frameCount = numFrames;
 			size_t byteSize = numFrames * deviceChannels * sizeof(float);
 			data.data.resize(byteSize);
 
@@ -117,16 +141,21 @@ AudioData WasapiDefaultInputSource::GetAudioData() {
 			}
 
 			pCaptureClient->ReleaseBuffer(numFrames);
+			if (WASAPI_LOGGING) {
+				std::cout << "<WASAPI Source> Returning MediaData object with " << data.data.size() << " bytes" << std::endl;
+			}
 			return data;
 		}
 	}
 
+	if (WASAPI_LOGGING) {
+		std::cout << "<WASAPI Source> Received audio packet with no frames. Sleeping for 1ms" << std::endl;
+	}
 	std::this_thread::sleep_for(std::chrono::milliseconds(1));
-	data.frameCount = 0;
 	return data;
 }
 
-void WasapiDefaultInputSource::CleanupCOM() {
+void WasapiAudioInputSource::CleanupCOM() {
 	if (pCaptureClient) pCaptureClient->Release();
 	if (pAudioClient) pAudioClient->Release();
 	if (pDevice) pDevice->Release();

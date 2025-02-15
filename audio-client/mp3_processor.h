@@ -1,8 +1,9 @@
 #pragma once
 #include <lame/lame.h>
-#include "audio_pipeline.h"
+#include "media_pipeline.h"
+#include "media_queue.h"
 
-class Mp3Processor : public IAudioProcessor {
+class Mp3Processor : public IMediaProcessor {
 public:
 	Mp3Processor(int bitrate = 320, 
 		int outputSampleRate = 44100, 
@@ -11,7 +12,7 @@ public:
 	~Mp3Processor();
 	void Start() override;
 	void Stop() override;
-	AudioData ProcessAudioData(const AudioData& input) override;
+	MediaData ProcessMediaData(const MediaData& input) override;
 
 private:
 	lame_global_flags* lameFlags;

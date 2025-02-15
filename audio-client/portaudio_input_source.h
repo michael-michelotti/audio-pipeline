@@ -1,15 +1,15 @@
 #pragma once
 #include <portaudio.h>
-#include "audio_pipeline.h"
+#include "media_pipeline.h"
 
 
-class PortaudioInputSource : public IAudioSource {
+class PortaudioInputSource : public IMediaSource {
 public:
 	PortaudioInputSource();
 	~PortaudioInputSource();
 	void Start() override;
 	void Stop() override;
-	AudioData GetAudioData() override;
+	MediaData GetMediaData() override;
 private:
     const size_t preferredBufferFrames = 480; // Adjust based on your needs
 

@@ -3,33 +3,47 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
-#include "audio_pipeline.h"
-#include "wasapi_default_input_source.h"
+#include "media_pipeline.h"
+#include "wasapi_audio_input_source.h"
 #include "portaudio_input_source.h"
 #include "mp3_processor.h"
 #include "opus_processor.h"
 #include "file_audio_sink.h"
 #include "network_audio_sink.h"
+#include "muxer_audio_sink.h"
 
+#include "muxer.h"
+#include "media_queue.h"
 
 int main() {
     try {
-        // auto source = std::make_shared<WasapiDefaultInputSource>();
-        auto source = std::make_shared<PortaudioInputSource>();
-        auto processor = std::make_shared<OpusProcessor>();
-        auto oggFormat = std::make_unique<OggFileFormat>();
-        auto sink = std::make_shared<NetworkAudioSink>("127.0.0.1", 12345);
-        // auto sink = std::make_shared<FileAudioSink>("test.ogg", std::move(oggFormat));
-        auto pipeline = std::make_shared<AudioPipeline>(source, processor, sink);
+        auto muxerQueue = std::make_shared<MediaQueue>();
 
-        std::cout << "Starting pipeline..." << std::endl;
-        pipeline->Start();
+        auto audio_source = std::make_shared<WasapiAudioInputSource>();
+        auto audio_processor = std::make_shared<OpusProcessor>();
+        auto audio_sink = std::make_shared<MuxerAudioSink>(muxerQueue);
+        auto audio_pipeline = std::make_shared<MediaPipeline>(
+            audio_source, 
+            audio_processor, 
+            audio_sink
+        );
+
+        
+        auto ogg_muxer = std::make_shared<OggMuxer>(muxerQueue);
+        std::cout << "Starting media muxer..." << std::endl;
+        ogg_muxer->Start();
+
+        std::cout << "Starting media pipelines..." << std::endl;
+        audio_pipeline->Start();
 
         std::cout << "Recording for 5 seconds..." << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(5));
 
-        std::cout << "Stopping pipeline..." << std::endl;
-        pipeline->Stop();
+        std::cout << "Stopping media muxer..." << std::endl;
+        ogg_muxer->Stop();
+
+        std::cout << "Stopping media pipelines..." << std::endl;
+        audio_pipeline->Stop();
 
         std::cout << "Clean shutdown complete" << std::endl;
     }

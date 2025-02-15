@@ -74,8 +74,8 @@ void PortaudioInputSource::Stop() {
 	}
 }
 
-AudioData PortaudioInputSource::GetAudioData() {
-	AudioData data;
+MediaData PortaudioInputSource::GetMediaData() {
+	MediaData data;
 	std::lock_guard<std::mutex> lock(bufferMutex);
 
 	size_t available;
@@ -96,13 +96,13 @@ AudioData PortaudioInputSource::GetAudioData() {
 			<< ", writePos=" << writePos
 			<< ", readPos=" << readPos << std::endl;
 
-		data.frameCount = 0;
+		// data.frameCount = 0;
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		return data;
 	}
 	else if (availableFrames >= preferredBufferFrames) {
 		std::cout << "Successful read: availableFrames=" << availableFrames << std::endl;
-		data.frameCount = preferredBufferFrames;
+		// data.frameCount = preferredBufferFrames;
 		size_t byteSize = preferredBufferFrames * deviceChannels * sizeof(float);
 		data.data.resize(byteSize);
 

@@ -47,7 +47,7 @@ void NetworkAudioSink::Stop() {
 	}
 }
 
-void NetworkAudioSink::ConsumeAudioData(const AudioData& data) {
+void NetworkAudioSink::ConsumeMediaData(const MediaData& data) {
 	// if socket established, AudioData.data over network
 	uint32_t dataSize = static_cast<uint32_t>(data.data.size());
 	if (send(sock, reinterpret_cast<const char*>(&dataSize), sizeof(dataSize), 0) != sizeof(dataSize)) {
