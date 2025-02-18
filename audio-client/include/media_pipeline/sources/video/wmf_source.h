@@ -12,19 +12,24 @@
 #include "media_pipeline/core/interfaces/i_media_component.h"
 #include "media_pipeline/core/media_data.h"
 
-class WebcamSource : public IMediaSource {
-public:
-	WebcamSource();
-	~WebcamSource();
-	void Start() override;
-	void Stop() override;
-	MediaData GetMediaData() override;
+namespace media_pipeline::sources::video {
+	using core::interfaces::IMediaSource;
+	using core::MediaData;
 
-private:
-	IMFSourceReader* pReader;
-	bool isInitialized;
-	UINT32 width;
-	UINT32 height;
-	float frameRate;
-	GUID subtype;
-};
+	class WmfSource : public IMediaSource {
+	public:
+		WmfSource();
+		~WmfSource();
+		void Start() override;
+		void Stop() override;
+		MediaData GetMediaData() override;
+
+	private:
+		IMFSourceReader* pReader;
+		bool isInitialized;
+		UINT32 width;
+		UINT32 height;
+		float frameRate;
+		GUID subtype;
+	};
+}

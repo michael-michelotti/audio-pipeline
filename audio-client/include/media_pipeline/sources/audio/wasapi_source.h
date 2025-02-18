@@ -7,26 +7,31 @@
 #include "media_pipeline/core/interfaces/i_media_source.h"
 #include "media_pipeline/core/media_data.h"
 
-class WasapiAudioInputSource : public IMediaSource {
-public:
-	WasapiAudioInputSource();
-	~WasapiAudioInputSource();
-	void Start() override;
-	void Stop() override;
-	MediaData GetMediaData() override;
+namespace media_pipeline::sources::audio {
+	using core::interfaces::IMediaSource;
+	using core::MediaData;
 
-private:
-	bool Initialize();
-	void CleanupCOM();
+	class WasapiSource : public IMediaSource {
+	public:
+		WasapiSource();
+		~WasapiSource();
+		void Start() override;
+		void Stop() override;
+		MediaData GetMediaData() override;
 
-	DWORD deviceSampleRate;
-	WORD deviceChannels;
-	WORD deviceBitsPerSample;
+	private:
+		bool Initialize();
+		void CleanupCOM();
 
-	IMMDeviceEnumerator* pEnumerator;
-	IMMDevice* pDevice;
-	IAudioClient* pAudioClient;
-	IAudioCaptureClient* pCaptureClient;
+		DWORD deviceSampleRate;
+		WORD deviceChannels;
+		WORD deviceBitsPerSample;
 
-	UINT32 bufferFrameSize;
-};
+		IMMDeviceEnumerator* pEnumerator;
+		IMMDevice* pDevice;
+		IAudioClient* pAudioClient;
+		IAudioCaptureClient* pCaptureClient;
+
+		UINT32 bufferFrameSize;
+	};
+}

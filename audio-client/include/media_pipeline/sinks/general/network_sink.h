@@ -7,18 +7,22 @@
 #include "media_pipeline/core/interfaces/i_media_component.h"
 #include "media_pipeline/core/media_data.h"
 
+namespace media_pipeline::sinks::general {
+	using core::interfaces::IMediaSink;
+	using core::MediaData;
 
-class NetworkAudioSink : public IMediaSink {
-public:
-	NetworkAudioSink(const std::string& address, USHORT port);
-	~NetworkAudioSink();
+	class NetworkSink : public IMediaSink {
+	public:
+		NetworkSink(const std::string& address, USHORT port);
+		~NetworkSink();
 
-	void Start() override;
-	void Stop() override;
-	void ConsumeMediaData(const MediaData& data) override;
+		void Start() override;
+		void Stop() override;
+		void ConsumeMediaData(const MediaData& data) override;
 
-private:
-	SOCKET sock;
-	USHORT serverPort;
-	std::string serverAddress;
-};
+	private:
+		SOCKET sock;
+		USHORT serverPort;
+		std::string serverAddress;
+	};
+}

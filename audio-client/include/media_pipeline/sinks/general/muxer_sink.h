@@ -7,14 +7,20 @@
 #include "media_pipeline/core/media_data.h"
 #include "media_pipeline/core/media_queue.h"
 
-class MuxerAudioSink : public IMediaSink {
-public:
-	MuxerAudioSink(std::shared_ptr<MediaQueue> mediaQueue);
-	void ConsumeMediaData(const MediaData& data) override;
-	void Start() override;
-	void Stop() override;
+namespace media_pipeline::sinks::general {
+	using core::MediaQueue;
+	using core::MediaData;
+	using core::interfaces::IMediaSink;
 
-private:
-	std::shared_ptr<MediaQueue> mediaQueue;
-	std::atomic<bool> isRunning{ false };
-};
+	class MuxerSink : public IMediaSink {
+	public:
+		MuxerSink(std::shared_ptr<MediaQueue> mediaQueue);
+		void ConsumeMediaData(const MediaData& data) override;
+		void Start() override;
+		void Stop() override;
+
+	private:
+		std::shared_ptr<MediaQueue> mediaQueue;
+		std::atomic<bool> isRunning{ false };
+	};
+}

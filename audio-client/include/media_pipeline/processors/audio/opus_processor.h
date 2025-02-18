@@ -5,22 +5,27 @@
 #include "media_pipeline/core/interfaces/i_media_component.h"
 #include "media_pipeline/core/media_data.h"
 
-class OpusProcessor : public IMediaProcessor {
-public:
-	OpusProcessor(int bitrate = 128,
-		int inputSampleRate = 48000,
-		int channels = 2,
-		int frameSize = 480);
-	~OpusProcessor();
-	void Start() override;
-	void Stop() override;
-	MediaData ProcessMediaData(const MediaData& input) override;
+namespace media_pipeline::processors::audio {
+	using core::interfaces::IMediaProcessor;
+	using core::MediaData;
 
-private:
-	OpusEncoder* encoder;
+	class OpusProcessor : public IMediaProcessor {
+	public:
+		OpusProcessor(int bitrate = 128,
+			int inputSampleRate = 48000,
+			int channels = 2,
+			int frameSize = 480);
+		~OpusProcessor();
+		void Start() override;
+		void Stop() override;
+		MediaData ProcessMediaData(const MediaData& input) override;
 
-	int bitrate;
-	int inputSampleRate;
-	int channels;
-	int frameSize;	
-};
+	private:
+		OpusEncoder* encoder;
+
+		int bitrate;
+		int inputSampleRate;
+		int channels;
+		int frameSize;
+	};
+}

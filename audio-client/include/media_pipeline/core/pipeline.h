@@ -8,30 +8,32 @@
 #include "media_pipeline/core/interfaces/i_media_processor.h"
 #include "media_pipeline/core/interfaces/i_media_sink.h"
 
-class MediaPipeline {
-public:
-    MediaPipeline(
-        std::shared_ptr<IMediaSource> source,
-        std::shared_ptr<IMediaProcessor> processor,
-        std::shared_ptr<IMediaSink> sink);
-    void Start();
-    void Stop();
+namespace media_pipeline::core {
+    class MediaPipeline {
+    public:
+        MediaPipeline(
+            std::shared_ptr<interfaces::IMediaSource> source,
+            std::shared_ptr<interfaces::IMediaProcessor> processor,
+            std::shared_ptr<interfaces::IMediaSink> sink);
+        void Start();
+        void Stop();
 
-private:
-    void SourceThread();
-    void ProcessorThread();
-    void SinkThread();
+    private:
+        void SourceThread();
+        void ProcessorThread();
+        void SinkThread();
 
-    std::shared_ptr<IMediaSource> source;
-    std::shared_ptr<IMediaProcessor> processor;
-    std::shared_ptr<IMediaSink> sink;
+        std::shared_ptr<interfaces::IMediaSource> source;
+        std::shared_ptr<interfaces::IMediaProcessor> processor;
+        std::shared_ptr<interfaces::IMediaSink> sink;
 
-    MediaQueue rawQueue;
-    MediaQueue processedQueue;
+        MediaQueue rawQueue;
+        MediaQueue processedQueue;
 
-    std::thread sourceThread;
-    std::thread processorThread;
-    std::thread sinkThread;
+        std::thread sourceThread;
+        std::thread processorThread;
+        std::thread sinkThread;
 
-    std::atomic<bool> isRunning;
-};
+        std::atomic<bool> isRunning;
+    };
+}

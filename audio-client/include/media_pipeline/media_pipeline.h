@@ -30,3 +30,17 @@
 #include "sinks/general/file_sink.h"
 #include "sinks/general/muxer_sink.h"
 #include "sinks/general/network_sink.h"
+
+namespace media_pipeline {
+	using core::interfaces::IFileFormat;
+	using core::interfaces::IMediaComponent;
+	using core::interfaces::IMediaProcessor;
+	using core::interfaces::IMediaSink;
+	using core::interfaces::IMediaSource;
+
+	using core::AudioFormat;
+	using core::VideoFormat;
+	using core::MediaData;
+	using core::MediaPipeline;
+	using core::MediaQueue;
+}

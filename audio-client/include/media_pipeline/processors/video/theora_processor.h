@@ -5,22 +5,27 @@
 #include "media_pipeline/core/interfaces/i_media_component.h"
 #include "media_pipeline/core/media_data.h"
 
-class TheoraProcessor : public IMediaProcessor {
-public:
-    TheoraProcessor();
-    ~TheoraProcessor();
-    void Start() override;
-    void Stop() override;
-    MediaData ProcessMediaData(const MediaData& input) override;
+namespace media_pipeline::processors::video {
+    using core::interfaces::IMediaProcessor;
+    using core::MediaData;
 
-private:
-    void InitializeEncoder(const MediaData& firstFrame);
+    class TheoraProcessor : public IMediaProcessor {
+    public:
+        TheoraProcessor();
+        ~TheoraProcessor();
+        void Start() override;
+        void Stop() override;
+        MediaData ProcessMediaData(const MediaData& input) override;
 
-    void SetupTheoraPicture(th_ycbcr_buffer& ycbcr,
-        const uint8_t* yuvData,
-        int width,
-        int height);
+    private:
+        void InitializeEncoder(const MediaData& firstFrame);
 
-    th_enc_ctx* enc_state;
-    bool isInitialized;
-};
+        void SetupTheoraPicture(th_ycbcr_buffer& ycbcr,
+            const uint8_t* yuvData,
+            int width,
+            int height);
+
+        th_enc_ctx* enc_state;
+        bool isInitialized;
+    };
+}

@@ -6,22 +6,24 @@
 #include <media_pipeline/media_pipeline.h>
 #include <muxing/ogg_muxer.h>
 
+using namespace media_pipeline;
+
 int main() {
     try {
         auto muxerQueue = std::make_shared<MediaQueue>();
 
-        auto audio_source = std::make_shared<WasapiAudioInputSource>();
-        auto audio_processor = std::make_shared<OpusProcessor>();
-        auto audio_sink = std::make_shared<MuxerAudioSink>(muxerQueue);
+        auto audio_source = std::make_shared<sources::audio::WasapiSource>();
+        auto audio_processor = std::make_shared<processors::audio::OpusProcessor>();
+        auto audio_sink = std::make_shared<sinks::general::MuxerSink>(muxerQueue);
         auto audio_pipeline = std::make_shared<MediaPipeline>(
             audio_source, 
             audio_processor, 
             audio_sink
         );
 
-        auto video_source = std::make_shared<WebcamSource>();
-        auto video_processor = std::make_shared<TheoraProcessor>();
-        auto video_sink = std::make_shared<MuxerAudioSink>(muxerQueue);
+        auto video_source = std::make_shared<sources::video::WmfSource>();
+        auto video_processor = std::make_shared<processors::video::TheoraProcessor>();
+        auto video_sink = std::make_shared<sinks::general::MuxerSink>(muxerQueue);
         auto video_pipeline = std::make_shared<MediaPipeline>(
             video_source,
             video_processor,

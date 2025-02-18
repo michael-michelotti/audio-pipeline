@@ -1,4 +1,7 @@
 #pragma once
+#include <media_pipeline/media_pipeline.h>
+
+using namespace media_pipeline;
 
 class IMuxer {
 public:

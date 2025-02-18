@@ -8,6 +8,9 @@
 #include <ogg/ogg.h>
 
 #include "muxing/interfaces/i_muxer.h"
+#include <media_pipeline/media_pipeline.h>
+
+using namespace media_pipeline;
 
 class OggMuxer : public IMuxer {
 public:
@@ -25,7 +28,7 @@ private:
 	std::atomic<bool> isRunning{false};
 	std::thread muxerThread;
 
-	OggFileFormat oggFormat;
+	file_formats::OggFileFormat oggFormat;
 	std::ofstream outputFile;
 
 	ogg_int64_t packetNo;

@@ -10,26 +10,31 @@
 #include "media_pipeline/core/media_data.h"
 #include "media_pipeline/core/media_queue.h"
 
-MuxerAudioSink::MuxerAudioSink(std::shared_ptr<MediaQueue> mediaQueue) 
-	: mediaQueue(mediaQueue) {
+namespace media_pipeline::sinks::general {
+	using core::MediaQueue;
+	using core::MediaData;
 
-}
+	MuxerSink::MuxerSink(std::shared_ptr<MediaQueue> mediaQueue)
+		: mediaQueue(mediaQueue) {
 
-void MuxerAudioSink::ConsumeMediaData(const MediaData& data) {
-	if (MUXER_SINK_LOGGING) {
-		std::cout << "Received audio packet with " << data.data.size() << " bytes." << std::endl;
 	}
-	mediaQueue->Push(data);
 
-	if (MUXER_SINK_LOGGING) {
-		std::cout << "Pushed data to muxer media queue. Current queue size: " << mediaQueue->queue.size() << std::endl;
+	void MuxerSink::ConsumeMediaData(const MediaData& data) {
+		if (MUXER_SINK_LOGGING) {
+			std::cout << "Received audio packet with " << data.data.size() << " bytes." << std::endl;
+		}
+		mediaQueue->Push(data);
+
+		if (MUXER_SINK_LOGGING) {
+			std::cout << "Pushed data to muxer media queue. Current queue size: " << mediaQueue->queue.size() << std::endl;
+		}
 	}
-}
 
-void MuxerAudioSink::Start() {
-	isRunning = true;
-}
+	void MuxerSink::Start() {
+		isRunning = true;
+	}
 
-void MuxerAudioSink::Stop() {
-	isRunning = false;
+	void MuxerSink::Stop() {
+		isRunning = false;
+	}
 }
