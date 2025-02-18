@@ -38,6 +38,7 @@ private:
 	void FlushOggPages(std::ofstream& file, ogg_stream_state& stream);
 	void WriteOpusHead(std::ofstream& file);
 	void WriteOpusTags(std::ofstream& file);
+	ogg_packet GenerateEmptyPacket();
 
 	bool headersSet = false;
 	ogg_int64_t audioPacketNo;
@@ -45,7 +46,8 @@ private:
 	ogg_stream_state audioStream;
 	ogg_int64_t videoPacketNo;
 	ogg_int64_t videoGranulePos;
-	ogg_int64_t lastKeyFrame = 0;
+	ogg_int64_t relativePackets;
+	ogg_int64_t totalPackets;
 	ogg_stream_state videoStream;
 	int audioSerialNo;
 	int videoSerialNo;

@@ -3,6 +3,7 @@
 #include "media_pipeline.h"
 #include <iostream>
 #include <chrono>
+#include <theora/theora.h>
 
 
 TheoraProcessor::TheoraProcessor() : isInitialized(false), enc_state(nullptr) {
@@ -60,7 +61,7 @@ MediaData TheoraProcessor::ProcessMediaData(const MediaData& input) {
         th_comment_clear(&comment);
 
         // Create and emit header MediaData
-        VideoFormat headerFormat = std::get<VideoFormat>(input.format);  // Copy format from input
+        VideoFormat headerFormat = std::get<VideoFormat>(input.format);
         headerFormat.format = VideoFormat::PixelFormat::THEORA_HEADERS;
         MediaData headerOutput = MediaData::createVideo(std::move(headerData), headerFormat);
 
@@ -86,11 +87,12 @@ MediaData TheoraProcessor::ProcessMediaData(const MediaData& input) {
     std::vector<uint8_t> compressedData;
 
     if (th_encode_packetout(enc_state, 0, &packet) == 1) {
-        // Copy packet data
         compressedData.resize(packet.bytes);
         std::memcpy(compressedData.data(), packet.packet, packet.bytes);
     }
 
+    double timestamp = th_granule_time(enc_state, packet.granulepos);
+    std::cout << "timestamp of video packet: " << timestamp << std::endl;
 
     // Create output MediaData
     VideoFormat outputFormat;
@@ -99,6 +101,7 @@ MediaData TheoraProcessor::ProcessMediaData(const MediaData& input) {
     outputFormat.frameRate = format.frameRate;
     outputFormat.format = VideoFormat::PixelFormat::THEORA;
     outputFormat.isKeyFrame = th_packet_iskeyframe(&packet) > 0;
+    outputFormat.granulepos = packet.granulepos;
 
     MediaData output = MediaData::createVideo(std::move(compressedData), outputFormat);
     output.timestamp = input.timestamp;
@@ -120,8 +123,8 @@ void TheoraProcessor::InitializeEncoder(const MediaData& firstFrame) {
     info.pic_y = 0;
     info.colorspace = TH_CS_ITU_REC_470BG;
     info.pixel_fmt = TH_PF_420;
-    info.target_bitrate = 80000;  // 80 Kbps target
-    info.quality = 32;           // Mid-range quality (0-63)
+    info.target_bitrate = 600000;  // 1.5 Mbps target
+    info.quality = 48;           // Mid-range quality (0-63)
     info.fps_numerator = static_cast<int>(format.frameRate);
     info.fps_denominator = 1;
 

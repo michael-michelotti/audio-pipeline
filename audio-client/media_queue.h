@@ -3,6 +3,7 @@
 #include <variant>
 #include <mutex>
 #include <queue>
+#include <ogg/ogg.h>
 
 
 struct AudioFormat {
@@ -32,6 +33,7 @@ struct VideoFormat {
 
 	float frameRate;
 	bool isKeyFrame;
+	uint64_t granulepos = 0;
 };
 
 

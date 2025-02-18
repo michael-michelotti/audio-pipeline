@@ -1,6 +1,7 @@
 #include "file_format.h"
 #include <iostream>
 #include <iomanip>
+#include <opus/opus.h>
 
 #define NOMINMAX
 
@@ -33,7 +34,9 @@ OggFileFormat::OggFileFormat()
     : audioPacketNo(0)
     , audioGranulePos(0)
     , videoPacketNo(0)
-    , videoGranulePos(0) {
+    , videoGranulePos(0)
+    , relativePackets(0)
+    , totalPackets(0) {
     audioSerialNo = rand();
     do {
         videoSerialNo = rand();
@@ -75,6 +78,12 @@ void OggFileFormat::WriteOggPages(std::ofstream& file, ogg_stream_state& stream)
             oggPage.header_len);
         file.write(reinterpret_cast<const char*>(oggPage.body),
             oggPage.body_len);
+
+
+        if (&stream == &audioStream) {
+            static int audioPageNo = 0;
+            std::cout << "wrote audio page number " << ++audioPageNo << std::endl;
+        }
     }
 }
 
@@ -88,64 +97,56 @@ void OggFileFormat::FlushOggPages(std::ofstream& file, ogg_stream_state& stream)
             oggPage.body_len);
         file.flush();
     }
+    //if (&stream == &videoStream) {
+    //    std::cout << "wrote frame number " << videoPacketNo << std::endl;
+    //}
 }
 
 void OggFileFormat::WriteVideoData(std::ofstream& file, const MediaData& data) {
     if (!file.is_open()) throw std::runtime_error("file not open");
-    const VideoFormat& format = data.getVideoFormat();
-
-    ogg_packet oggData;
-    oggData.packet = const_cast<unsigned char*>(data.data.data());
-    oggData.bytes = data.data.size();
-    oggData.b_o_s = 0;
-    oggData.e_o_s = 0;
-    oggData.granulepos = videoGranulePos;
-    // For Theora, granulepos represents frame number
-    //if (format.isKeyFrame) {
-    //    lastKeyFrame = videoGranulePos;
-    //    oggData.granulepos = (videoGranulePos << 32) | 0;
-    //}
-    //else {
-    //    ogg_int64_t delta = videoGranulePos - lastKeyFrame;
-    //    oggData.granulepos = (lastKeyFrame << 32) | delta;
-    //}
-    videoGranulePos++;
-    oggData.packetno = videoPacketNo++;
-
-    //std::cout << "Writing video packet:" << std::endl;
-    //std::cout << "  Size: " << data.data.size() << std::endl;
-    //std::cout << "  Is keyframe: " << format.isKeyFrame << std::endl;
-    //std::cout << "  Granule Pos: 0x" << std::hex << std::setfill('0') << std::setw(16)
-    //    << oggData.granulepos << std::dec << std::endl;
 
     if (headersSet) {
+        const VideoFormat& format = data.getVideoFormat();
+
+        ogg_packet oggData;
+        oggData.packet = const_cast<unsigned char*>(data.data.data());
+        oggData.bytes = data.data.size();
+        oggData.b_o_s = 0;
+        oggData.e_o_s = 0;
+        oggData.granulepos = format.granulepos;
+        oggData.packetno = videoPacketNo++;
+
         if (ogg_stream_packetin(&videoStream, &oggData) != 0) {
             throw std::runtime_error("Failed to insert video data into Ogg stream");
         }
-        WriteOggPages(file, videoStream);
+        FlushOggPages(file, videoStream);
     }
 }
 
 void OggFileFormat::WriteAudioData(std::ofstream& file, const MediaData& data) {
     if (!file.is_open()) throw std::runtime_error("file not open");
 
-    uint32_t frameCount;
-    memcpy(&frameCount, data.data.data(), sizeof(frameCount));
-    if (frameCount == 0) return;
-
-    const uint8_t* opusData = data.data.data() + sizeof(frameCount);
-    size_t opusDataSize = data.data.size() - sizeof(frameCount);
-
-    ogg_packet oggData;
-    oggData.packet = const_cast<unsigned char*>(opusData);
-    oggData.bytes = opusDataSize;
-    oggData.b_o_s = 0;
-    oggData.e_o_s = 0;
-    audioGranulePos += frameCount;
-    oggData.granulepos = audioGranulePos;
-    oggData.packetno = audioPacketNo++;
-
     if (headersSet) {
+        uint32_t frameCount;
+        memcpy(&frameCount, data.data.data(), sizeof(frameCount));
+        if (frameCount == 0) return;
+
+        const uint8_t* opusData = data.data.data() + sizeof(frameCount);
+        size_t opusDataSize = data.data.size() - sizeof(frameCount);
+
+        ogg_packet oggData;
+        oggData.packet = const_cast<unsigned char*>(opusData);
+        oggData.bytes = opusDataSize;
+        oggData.b_o_s = 0;
+        oggData.e_o_s = 0;
+        audioGranulePos += frameCount;
+        oggData.granulepos = audioGranulePos;
+        oggData.packetno = audioPacketNo++;
+
+        double timestamp = (double)audioGranulePos / (double)48000;
+        std::cout << "Audio granule pos for packet " << audioPacketNo << ": " << audioGranulePos << std::endl;
+        std::cout << "Audio timestamp: " << timestamp << std::endl;
+
         if (ogg_stream_packetin(&audioStream, &oggData) != 0) {
             throw std::runtime_error("Failed to insert audio data into Ogg stream");
         }
@@ -165,6 +166,24 @@ void OggFileFormat::WriteData(std::ofstream& file, const MediaData& data) {
 }
 
 void OggFileFormat::Finalize(std::ofstream& file) {
+    // Mark last audio packet as end of stream
+    ogg_packet lastAudioPacket;
+    lastAudioPacket.e_o_s = 1;  // Set end of stream flag
+    lastAudioPacket.bytes = 0;
+    lastAudioPacket.b_o_s = 0;
+    lastAudioPacket.granulepos = audioGranulePos;
+    lastAudioPacket.packetno = audioPacketNo++;
+    ogg_stream_packetin(&audioStream, &lastAudioPacket);
+
+    // Mark last video packet as end of stream
+    ogg_packet lastVideoPacket;
+    lastVideoPacket.e_o_s = 1;  // Set end of stream flag
+    lastVideoPacket.bytes = 0;
+    lastVideoPacket.b_o_s = 0;
+    lastVideoPacket.granulepos = videoGranulePos;
+    lastVideoPacket.packetno = videoPacketNo++;
+    ogg_stream_packetin(&videoStream, &lastVideoPacket);
+
     FlushOggPages(file, audioStream);
     FlushOggPages(file, videoStream);
     ogg_stream_clear(&audioStream);
@@ -178,7 +197,6 @@ void OggFileFormat::WriteHeader(std::ofstream& file) {
 
 void OggFileFormat::WriteOpusHead(std::ofstream& file) {
     // OpusHead Packet 
-    std::cout << "write opus head" << std::endl;
     unsigned char header[19] = {
         'O', 'p', 'u', 's', 'H', 'e', 'a', 'd',   // Magic Signature
         1,                                        // Version
@@ -212,7 +230,7 @@ void OggFileFormat::WriteOpusTags(std::ofstream& file) {
     std::vector<uint8_t> tagsHeader(tagsSize);
 
     size_t pos = 0;
-    memcpy(tagsHeader.data() + pos, "Opustags", 8);
+    memcpy(tagsHeader.data() + pos, "OpusTags", 8);
     pos += 8;
 
     tagsHeader[pos++] = vendorLen & 0xFF;
@@ -242,6 +260,17 @@ void OggFileFormat::WriteOpusTags(std::ofstream& file) {
 
     FlushOggPages(file, audioStream);
     audioGranulePos = -OPUS_PRESKIP;
+}
+
+ogg_packet OggFileFormat::GenerateEmptyPacket() {
+    // Mark last audio packet as end of stream
+    ogg_packet emptyPacket;
+    emptyPacket.e_o_s = 0;  // Set end of stream flag
+    emptyPacket.bytes = 0;
+    emptyPacket.b_o_s = 0;
+    emptyPacket.granulepos = 0;
+    emptyPacket.packetno = 0;
+    return emptyPacket;
 }
 
 void OggFileFormat::WriteTheoraHeaders(std::ofstream& file, const MediaData& data) {
@@ -278,15 +307,19 @@ void OggFileFormat::WriteTheoraHeaders(std::ofstream& file, const MediaData& dat
         }
 
         // Force a page break after each header
-        std::cout << "flushing theora page" << std::endl;
         FlushOggPages(file, videoStream);
-
-        if (i == 0) {
-        }
 
         currentPos += packetSize;
         remainingSize -= packetSize;
     }
+
+    ogg_packet pageBreak = GenerateEmptyPacket();
+    pageBreak.packetno = videoPacketNo++;
+    if (ogg_stream_packetin(&videoStream, &pageBreak) != 0) {
+        throw std::runtime_error("Failed to write Theora header");
+    }
+    // Force a page break after each header
+    FlushOggPages(file, videoStream);
 
     WriteOpusTags(file);
 
