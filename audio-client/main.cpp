@@ -1,21 +1,10 @@
 // main.cpp
-#include <WinSock2.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
-#include "media_pipeline.h"
-#include "wasapi_audio_input_source.h"
-#include "portaudio_input_source.h"
-#include "mp3_processor.h"
-#include "opus_processor.h"
-#include "file_audio_sink.h"
-#include "network_audio_sink.h"
-#include "muxer_audio_sink.h"
-#include "wmf_video_input_source.h"
-#include "theora_processor.h"
 
-#include "muxer.h"
-#include "media_queue.h"
+#include <media_pipeline/media_pipeline.h>
+#include <muxing/ogg_muxer.h>
 
 int main() {
     try {
