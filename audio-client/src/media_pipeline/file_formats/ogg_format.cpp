@@ -124,9 +124,9 @@ namespace media_pipeline::file_formats {
             oggData.granulepos = audioGranulePos;
             oggData.packetno = audioPacketNo++;
 
-            double timestamp = (double)audioGranulePos / (double)48000;
-            std::cout << "Audio granule pos for packet " << audioPacketNo << ": " << audioGranulePos << std::endl;
-            std::cout << "Audio timestamp: " << timestamp << std::endl;
+            //double timestamp = (double)audioGranulePos / (double)48000;
+            //std::cout << "Audio granule pos for packet " << audioPacketNo << ": " << audioGranulePos << std::endl;
+            //std::cout << "Audio timestamp: " << timestamp << std::endl;
 
             if (ogg_stream_packetin(&audioStream, &oggData) != 0) {
                 throw std::runtime_error("Failed to insert audio data into Ogg stream");

@@ -20,6 +20,7 @@
 #include "processors/audio/mp3_processor.h"
 #include "processors/audio/opus_processor.h"
 #include "processors/video/theora_processor.h"
+#include "processors/video/hevc_processor.h"
 
 // Sources
 #include "sources/audio/portaudio_source.h"

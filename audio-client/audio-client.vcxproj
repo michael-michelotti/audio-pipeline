@@ -137,6 +137,7 @@
   <ItemGroup>
     <ClCompile Include="src\media_pipeline\file_formats\mp3_format.cpp" />
     <ClCompile Include="src\media_pipeline\file_formats\ogg_format.cpp" />
+    <ClCompile Include="src\media_pipeline\processors\video\hevc_processor.cpp" />
     <ClCompile Include="src\media_pipeline\sinks\general\file_sink.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="src\media_pipeline\core\media_queue.cpp" />
@@ -149,6 +150,7 @@
     <ClCompile Include="src\media_pipeline\sources\audio\wasapi_source.cpp" />
     <ClCompile Include="src\media_pipeline\processors\video\theora_processor.cpp" />
     <ClCompile Include="src\media_pipeline\sources\video\wmf_source.cpp" />
+    <ClCompile Include="src\muxing\mkv_muxer.cpp" />
     <ClCompile Include="src\muxing\ogg_muxer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -163,10 +165,12 @@
     <ClInclude Include="include\media_pipeline\file_formats\mp3_format.h" />
     <ClInclude Include="include\media_pipeline\file_formats\ogg_format.h" />
     <ClInclude Include="include\media_pipeline\media_pipeline.h" />
+    <ClInclude Include="include\media_pipeline\processors\video\hevc_processor.h" />
     <ClInclude Include="include\media_pipeline\sinks\general\file_sink.h" />
     <ClInclude Include="include\media_pipeline\core\media_queue.h" />
     <ClInclude Include="include\media_pipeline\processors\audio\mp3_processor.h" />
     <ClInclude Include="include\muxing\interfaces\i_muxer.h" />
+    <ClInclude Include="include\muxing\mkv_muxer.h" />
     <ClInclude Include="include\muxing\ogg_muxer.h" />
     <ClInclude Include="include\media_pipeline\sinks\general\muxer_sink.h" />
     <ClInclude Include="include\media_pipeline\sinks\general\network_sink.h" />

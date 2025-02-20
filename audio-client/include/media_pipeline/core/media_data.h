@@ -8,9 +8,12 @@ namespace media_pipeline::core {
 		int channels;
 		enum class SampleFormat {
 			PCM_S16LE,
+			PCM_S24LE,
+			PCM_S32LE,
 			PCM_FLOAT,
 			OPUS,
-			MP3
+			MP3,
+			AAC
 		} format;
 
 		int bitDepth;
@@ -25,7 +28,9 @@ namespace media_pipeline::core {
 			RGB24,
 			BGR24,
 			THEORA,
-			THEORA_HEADERS
+			THEORA_HEADERS,
+			HEVC,
+			HEVC_HEADERS
 		} format;
 
 		float frameRate;

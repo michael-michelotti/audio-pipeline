@@ -92,8 +92,8 @@ namespace media_pipeline::processors::video {
             std::memcpy(compressedData.data(), packet.packet, packet.bytes);
         }
 
-        double timestamp = th_granule_time(enc_state, packet.granulepos);
-        std::cout << "timestamp of video packet: " << timestamp << std::endl;
+        //double timestamp = th_granule_time(enc_state, packet.granulepos);
+        //std::cout << "timestamp of video packet: " << timestamp << std::endl;
 
         // Create output MediaData
         VideoFormat outputFormat;
@@ -124,7 +124,7 @@ namespace media_pipeline::processors::video {
         info.pic_y = 0;
         info.colorspace = TH_CS_ITU_REC_470BG;
         info.pixel_fmt = TH_PF_420;
-        info.target_bitrate = 600000;
+        info.target_bitrate = 2000000;
         info.quality = 48;
         info.fps_numerator = static_cast<int>(format.frameRate);
         info.fps_denominator = 1;

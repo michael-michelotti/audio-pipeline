@@ -11,18 +11,18 @@ namespace media_pipeline::processors::audio {
 
 	class Mp3Processor : public IMediaProcessor {
 	public:
-		Mp3Processor(int bitrate = 320,
-			int outputSampleRate = 44100,
-			int inputSampleRate = 48000,
-			int channels = 2);
+		Mp3Processor(int requestedBitrate = 320);
 		~Mp3Processor();
 		void Start() override;
 		void Stop() override;
 		MediaData ProcessMediaData(const MediaData& input) override;
 
 	private:
+		bool InitializeEncoder(const MediaData& firstPacket);
+
 		lame_global_flags* lameFlags;
 
+		bool isInitialized;
 		int bitrate;
 		int outputSampleRate;
 		int inputSampleRate;

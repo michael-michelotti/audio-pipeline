@@ -15,6 +15,8 @@
 #include "media_pipeline/core/interfaces/i_media_component.h"
 #include "media_pipeline/core/media_data.h"
 
+static int frameCount = 0;
+
 namespace media_pipeline::sources::video {
 	using core::MediaData;
 	using core::VideoFormat;
@@ -73,7 +75,7 @@ namespace media_pipeline::sources::video {
 		pType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
 		pType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_I420);
 		MFSetAttributeSize(pType, MF_MT_FRAME_SIZE, 640, 480);
-		MFSetAttributeRatio(pType, MF_MT_FRAME_RATE, 15, 1);
+		MFSetAttributeRatio(pType, MF_MT_FRAME_RATE, 30, 1);
 
 		// Try to set this format
 		hr = pReader->SetCurrentMediaType(
@@ -199,6 +201,7 @@ namespace media_pipeline::sources::video {
 		//	<< "\n Captured bytes: " << data.data.size() << std::endl;
 		//	std::cout << "Format: " << (subtype == MFVideoFormat_I420 ? "I420" :
 		//		subtype == MFVideoFormat_NV12 ? "NV12" : "Other") << std::endl;
+		//	std::cout << "Total frames: " << frameCount++ << std::endl;
 		return data;
 	}
 }

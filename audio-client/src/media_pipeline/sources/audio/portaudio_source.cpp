@@ -8,16 +8,24 @@
 #include "media_pipeline/core/interfaces/i_media_component.h"
 #include "media_pipeline/core/media_data.h"
 
+static int packetCount = 0;
+
 namespace media_pipeline::sources::audio {
 	using core::MediaData;
+	using core::AudioFormat;
 
-	PortaudioSource::PortaudioSource()
+	PortaudioSource::PortaudioSource(
+		double requestedSampleRate, 
+		unsigned int requestedChannels,
+		AudioFormat::SampleFormat requestedFormat
+	)
 		: stream(nullptr)
 		, ringBufferSize(preferredBufferFrames * 8)
 		, writePos(0)
 		, readPos(0)
-		, deviceSampleRate(48000)
-		, deviceChannels(2)
+		, deviceSampleRate(requestedSampleRate)
+		, deviceChannels(requestedChannels)
+		, deviceFormat(requestedFormat)
 	{
 		ringBuffer.resize(ringBufferSize * deviceChannels);
 		PaError err = Pa_Initialize();
@@ -32,23 +40,26 @@ namespace media_pipeline::sources::audio {
 		}
 
 		const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(inputDevice);
-
-		deviceSampleRate = static_cast<unsigned int>(deviceInfo->defaultSampleRate);
-		std::cout << "Device sample rate: " << deviceSampleRate << std::endl;
-		deviceChannels = 2;
+		DumpDeviceInfo(deviceInfo);
 
 		PaStreamParameters inputParams;
 		inputParams.device = inputDevice;
+
+		if (deviceInfo->maxInputChannels < deviceChannels){
+			std::cout << deviceChannels << " channels cannot be supported by " << deviceInfo->name
+				<< "\nSetting to max supported channels of " << deviceInfo->maxInputChannels << std::endl;
+			deviceChannels = deviceInfo->maxInputChannels;
+		}
 		inputParams.channelCount = deviceChannels;
-		inputParams.sampleFormat = paFloat32;
+		inputParams.sampleFormat = GetPaFormat(deviceFormat);
 		inputParams.suggestedLatency = deviceInfo->defaultHighInputLatency;
 		inputParams.hostApiSpecificStreamInfo = nullptr;
 
 		err = Pa_OpenStream(
 			&stream,
 			&inputParams,
-			nullptr,  // No output
-			48000,		// hard coded 48 kHz at the moment
+			nullptr,	// No output parameters required
+			deviceSampleRate,
 			preferredBufferFrames,
 			paClipOff,
 			RecordCallback,
@@ -65,6 +76,28 @@ namespace media_pipeline::sources::audio {
 			Pa_CloseStream(stream);
 		}
 		Pa_Terminate();
+	}
+
+	void PortaudioSource::DumpDeviceInfo(const PaDeviceInfo* info) {
+		std::cout << "PortAudio device default parameters:"
+			<< "\n Name: " << info->name
+			<< "\n Sample Rate: " << info->defaultSampleRate
+			<< "\n Max Input Channels: " << info->maxInputChannels << std::endl;
+	}
+
+	PaSampleFormat PortaudioSource::GetPaFormat(AudioFormat::SampleFormat format) {
+		switch (format) {
+		case AudioFormat::SampleFormat::PCM_S16LE:
+			return paInt16;
+		case AudioFormat::SampleFormat::PCM_S24LE:
+			return paInt24;
+		case AudioFormat::SampleFormat::PCM_S32LE:
+			return paInt32;
+		case AudioFormat::SampleFormat::PCM_FLOAT:
+			return paFloat32;
+		default:
+			return paInt16;  // Default to 16-bit PCM
+		}
 	}
 
 	void PortaudioSource::Start() {
@@ -86,6 +119,20 @@ namespace media_pipeline::sources::audio {
 		MediaData data;
 		std::lock_guard<std::mutex> lock(bufferMutex);
 
+		size_t bytesPerSample;
+		switch (deviceFormat) {
+		case AudioFormat::SampleFormat::PCM_S16LE:
+			bytesPerSample = 2;
+			break;
+		case AudioFormat::SampleFormat::PCM_FLOAT:
+		case AudioFormat::SampleFormat::PCM_S32LE:
+		case AudioFormat::SampleFormat::PCM_S24LE:
+			bytesPerSample = 4;
+			break;
+		default:
+			throw std::runtime_error("Unsupported format on audio input device");
+		}
+
 		size_t available;
 		if (writePos >= readPos) {
 			available = writePos - readPos;
@@ -94,35 +141,42 @@ namespace media_pipeline::sources::audio {
 			available = ringBuffer.size() - (readPos - writePos);
 		}
 
-		size_t availableFrames = available / deviceChannels;
+		size_t availableFrames = available / (bytesPerSample * deviceChannels);
 
-		static int underrunCount = 0;
 		if (availableFrames < preferredBufferFrames) {
-			underrunCount++;
-			std::cout << "Underrun #" << underrunCount
-				<< ": availableFrames=" << availableFrames
-				<< ", writePos=" << writePos
-				<< ", readPos=" << readPos << std::endl;
-
-			// data.frameCount = 0;
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			return data;
 		}
 		else if (availableFrames >= preferredBufferFrames) {
-			std::cout << "Successful read: availableFrames=" << availableFrames << std::endl;
-			// data.frameCount = preferredBufferFrames;
-			size_t byteSize = preferredBufferFrames * deviceChannels * sizeof(float);
+			size_t byteSize = preferredBufferFrames * deviceChannels * bytesPerSample;
 			data.data.resize(byteSize);
 
-			float* outputBuffer = reinterpret_cast<float*>(data.data.data());
-
-			// Copy data from ring buffer
-			for (size_t i = 0; i < preferredBufferFrames * deviceChannels; i++) {
-				outputBuffer[i] = ringBuffer[readPos];
-				readPos = (readPos + 1) % ringBuffer.size();
+			switch (deviceFormat) {
+			case AudioFormat::SampleFormat::PCM_S16LE: {
+				auto* output = reinterpret_cast<int16_t*>(data.data.data());
+				auto* input = reinterpret_cast<int16_t*>(ringBuffer.data() + readPos);
+				size_t copySize = preferredBufferFrames * deviceChannels * sizeof(int16_t);
+				std::memcpy(output, input, copySize);
+				break;
 			}
+			case AudioFormat::SampleFormat::PCM_FLOAT: {
+				auto* output = reinterpret_cast<float*>(data.data.data());
+				auto* input = reinterpret_cast<float*>(ringBuffer.data() + readPos);
+				size_t copySize = preferredBufferFrames * deviceChannels * sizeof(float);
+				std::memcpy(output, input, copySize);
+				break;
+			}
+			default:
+				throw std::runtime_error("Unsuported format on audio input device");
+			}
+
+			readPos = (readPos + byteSize) % ringBuffer.size();
 		}
 
+		AudioFormat format;
+		format.sampleRate = deviceSampleRate;
+		format.channels = deviceChannels;
+		format.format = deviceFormat;
+		data.format = format;
 		return data;
 	}
 
@@ -135,22 +189,61 @@ namespace media_pipeline::sources::audio {
 		void* userData)
 	{
 		PortaudioSource* self = static_cast<PortaudioSource*>(userData);
-		const float* input = static_cast<const float*>(inputBuffer);
-
-		if (input == nullptr) {
+		if (inputBuffer == nullptr) {
 			return paContinue;
 		}
 
 		std::lock_guard<std::mutex> lock(self->bufferMutex);
 
-		for (unsigned long i = 0; i < framesPerBuffer; i++) {
-			float leftSample = input[i * self->deviceChannels];
-			size_t bufferIndex = (self->writePos + i * 2) % self->ringBuffer.size();
-			self->ringBuffer[bufferIndex] = leftSample;
-			self->ringBuffer[bufferIndex + 1] = leftSample;
+		switch (self->deviceFormat) {
+		case AudioFormat::SampleFormat::PCM_FLOAT:
+			self->HandleFloat32Input(static_cast<const float*>(inputBuffer), framesPerBuffer);
+			break;
+		case AudioFormat::SampleFormat::PCM_S16LE:
+			self->HandleInt16Input(static_cast<const int16_t*>(inputBuffer), framesPerBuffer);
+			break;
+		case AudioFormat::SampleFormat::PCM_S24LE:
+			self->HandleInt24Input(static_cast<const int32_t*>(inputBuffer), framesPerBuffer);
+			break;
+		case AudioFormat::SampleFormat::PCM_S32LE:
+			self->HandleInt32Input(static_cast<const int32_t*>(inputBuffer), framesPerBuffer);
+			break;
+		default:
+			return paAbort;
 		}
-		self->writePos = (self->writePos + framesPerBuffer * 2) % self->ringBuffer.size();
 
 		return paContinue;
+	}
+
+	void PortaudioSource::HandleFloat32Input(const float* inputBuffer, unsigned long framesPerBuffer) {
+		auto* ringBufferFloat = reinterpret_cast<float*>(ringBuffer.data());
+
+		for (unsigned long i = 0; i < framesPerBuffer; i++) {
+			size_t bufferIndex = (writePos / sizeof(float) + i * deviceChannels) % (ringBuffer.size() / sizeof(float));
+			for (unsigned int ch = 0; ch < deviceChannels; ch++) {
+				ringBufferFloat[bufferIndex + ch] = inputBuffer[i * deviceChannels + ch];
+			}
+		}
+		writePos = (writePos + framesPerBuffer * deviceChannels * sizeof(float)) % ringBuffer.size();
+	}
+
+	void PortaudioSource::HandleInt16Input(const int16_t* inputBuffer, unsigned long framesPerBuffer) {
+		auto* ringBuffer16 = reinterpret_cast<int16_t*>(ringBuffer.data());
+
+		for (unsigned long i = 0; i < framesPerBuffer; i++) {
+			size_t bufferIndex = (writePos / sizeof(int16_t) + i * deviceChannels) % (ringBuffer.size() / sizeof(int16_t));
+			for (unsigned int ch = 0; ch < deviceChannels; ch++) {
+				ringBuffer16[bufferIndex + ch] = inputBuffer[i * deviceChannels + ch];
+			}
+		}
+		writePos = (writePos + framesPerBuffer * deviceChannels * sizeof(int16_t)) % ringBuffer.size();
+	}
+
+	void PortaudioSource::HandleInt24Input(const int32_t* inputBuffer, unsigned long framesPerBuffer) {
+		// To be implemented
+	}
+
+	void PortaudioSource::HandleInt32Input(const int32_t* inputBuffer, unsigned long framesPerBuffer) {
+		// To be implemented
 	}
 }
